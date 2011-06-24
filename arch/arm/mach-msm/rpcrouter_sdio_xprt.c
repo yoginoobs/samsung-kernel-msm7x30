@@ -80,6 +80,8 @@ struct sdio_xprt {
 
 	struct list_head free_list;
 	spinlock_t free_list_lock;
+
+	struct wake_lock read_wakelock;
 };
 
 struct rpcrouter_sdio_xprt {
@@ -147,6 +149,7 @@ static void free_sdio_xprt(struct sdio_xprt *chnl)
 	}
 	num_rx_bufs = 0;
 	spin_unlock_irqrestore(&chnl->read_list_lock, flags);
+	wake_unlock(&chnl->read_wakelock);
 
 	kfree(chnl);
 }
@@ -246,6 +249,9 @@ static int rpcrouter_sdio_remote_read(void *data, uint32_t len)
 		num_rx_bufs--;
 		return_to_free_list(sdio_remote_xprt.channel, buf);
 	}
+
+	if (list_empty(&sdio_remote_xprt.channel->read_list))
+		wake_unlock(&sdio_remote_xprt.channel->read_wakelock);
 	spin_unlock_irqrestore(&sdio_remote_xprt.channel->read_list_lock,
 				flags);
 	return len;
@@ -439,6 +445,7 @@ static void sdio_xprt_read_data(struct work_struct *work)
 		num_rx_bufs++;
 		spin_unlock_irqrestore(
 			&sdio_remote_xprt.channel->read_list_lock, flags);
+		wake_lock(&sdio_remote_xprt.channel->read_wakelock);
 	}
 
 	if (!list_empty(&sdio_remote_xprt.channel->read_list))
@@ -482,6 +489,8 @@ static int allocate_sdio_xprt(struct sdio_xprt **sdio_xprt_chnl)
 	INIT_LIST_HEAD(&chnl->write_list);
 	INIT_LIST_HEAD(&chnl->read_list);
 	INIT_LIST_HEAD(&chnl->free_list);
+	wake_lock_init(&chnl->read_wakelock,
+			WAKE_LOCK_SUSPEND, "rpc_sdio_xprt_read");
 
 	for (i = 0; i < NUM_SDIO_BUFS; i++) {
 		buf = kzalloc(sizeof(struct sdio_buf_struct), GFP_KERNEL);
@@ -508,6 +517,7 @@ alloc_failure:
 		kfree(buf);
 	}
 	spin_unlock_irqrestore(&chnl->free_list_lock, flags);
+	wake_lock_destroy(&chnl->read_wakelock);
 
 	kfree(chnl);
 	return rc;

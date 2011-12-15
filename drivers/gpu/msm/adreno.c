@@ -899,7 +899,7 @@ static unsigned int kgsl_yamato_isidle(struct kgsl_device *device)
 	struct kgsl_ringbuffer *rb = &yamato_device->ringbuffer;
 	unsigned int rbbm_status;
 
-	if (rb->flags & KGSL_FLAGS_STARTED) {
+	if (device->state == KGSL_STATE_ACTIVE) {
 		/* Is the ring buffer is empty? */
 		GSL_RB_GET_READPTR(rb, &rb->rptr);
 		if (!device->active_cnt && (rb->rptr == rb->wptr)) {

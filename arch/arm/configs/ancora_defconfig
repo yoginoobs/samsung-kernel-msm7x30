@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.35.14
-# Thu Feb 16 15:35:39 2012
+# Sat Feb 18 01:30:38 2012
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -1186,7 +1186,7 @@ CONFIG_INPUT=y
 CONFIG_INPUT_EVDEV=y
 # CONFIG_INPUT_EVBUG is not set
 # CONFIG_INPUT_KEYRESET is not set
-CONFIG_INPUT_SECBRIDGE=y
+# CONFIG_INPUT_SECBRIDGE is not set
 
 #
 # Input Device Drivers
@@ -1819,7 +1819,7 @@ CONFIG_SND_JACK=y
 # CONFIG_SND_PCM_OSS is not set
 # CONFIG_SND_HRTIMER is not set
 # CONFIG_SND_DYNAMIC_MINORS is not set
-# CONFIG_SND_SUPPORT_OLD_API is not set
+CONFIG_SND_SUPPORT_OLD_API=y
 # CONFIG_SND_VERBOSE_PROCFS is not set
 # CONFIG_SND_VERBOSE_PRINTK is not set
 # CONFIG_SND_DEBUG is not set

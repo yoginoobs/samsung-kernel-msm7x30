@@ -2588,9 +2588,8 @@ static int ip_route_output_slow(struct net *net, struct rtable **rp,
 			goto out;
 
 		/* RACE: Check return value of inet_select_addr instead. */
-      if (!(dev_out->flags & IFF_UP) || !__in_dev_get_rtnl(dev_out)) {
-            dev_put(dev_out);
-            err = -ENETUNREACH;
+		if (__in_dev_get_rtnl(dev_out) == NULL) {
+			dev_put(dev_out);
 			goto out;	/* Wrong error code */
 		}
 

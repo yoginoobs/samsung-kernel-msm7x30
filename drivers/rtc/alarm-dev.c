@@ -160,7 +160,6 @@ from_old_alarm_set:
 		if (rv < 0)
 			goto err1;
 		break;
-
 	case ANDROID_ALARM_GET_TIME(0):
 		switch (alarm_type) {
 		case ANDROID_ALARM_RTC_WAKEUP:

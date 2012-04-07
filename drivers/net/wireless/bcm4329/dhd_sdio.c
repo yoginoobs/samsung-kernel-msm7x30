@@ -768,8 +768,10 @@ int
 dhdsdio_bussleep(dhd_bus_t *bus, bool sleep)
 {
 	bcmsdh_info_t *sdh = bus->sdh;
+#if !defined(OOB_INTR_ONLY) && defined(BCM_HOSTWAKE)
 	sdpcmd_regs_t *regs = bus->regs;
 	uint retries = 0;
+#endif
 
 	DHD_INFO(("dhdsdio_bussleep: request %s (currently %s)\n",
 	          (sleep ? "SLEEP" : "WAKE"),
@@ -785,7 +787,7 @@ dhdsdio_bussleep(dhd_bus_t *bus, bool sleep)
 		if (bus->dpc_sched || bus->rxskip || pktq_len(&bus->txq))
 			return BCME_BUSY;
 
-
+#if !defined(OOB_INTR_ONLY) && defined(BCM_HOSTWAKE)
 		/* Disable SDIO interrupts (no longer interested) */
 		bcmsdh_intr_disable(bus->sdh);
 
@@ -799,6 +801,7 @@ dhdsdio_bussleep(dhd_bus_t *bus, bool sleep)
 
 		/* Turn off our contribution to the HT clock request */
 		dhdsdio_clkctl(bus, CLK_SDONLY, FALSE);
+#endif
 
 		bcmsdh_cfg_write(sdh, SDIO_FUNC_1, SBSDIO_FUNC1_CHIPCLKCSR,
 		                 SBSDIO_FORCE_HW_CLKREQ_OFF, NULL);
@@ -822,7 +825,7 @@ dhdsdio_bussleep(dhd_bus_t *bus, bool sleep)
 		if ((bus->sih->buscoretype == PCMCIA_CORE_ID) && (bus->sih->buscorerev >= 10))
 			bcmsdh_cfg_write(sdh, SDIO_FUNC_1, SBSDIO_DEVICE_CTL, 0, NULL);
 
-
+#if !defined(OOB_INTR_ONLY) && defined(BCM_HOSTWAKE)
 		/* Make sure the controller has the bus up */
 		dhdsdio_clkctl(bus, CLK_AVAIL, FALSE);
 
@@ -836,15 +839,17 @@ dhdsdio_bussleep(dhd_bus_t *bus, bool sleep)
 
 		/* Make sure we have SD bus access */
 		dhdsdio_clkctl(bus, CLK_SDONLY, FALSE);
+#endif
 
 		/* Change state */
 		bus->sleeping = FALSE;
-
+#if !defined(OOB_INTR_ONLY) && defined(BCM_HOSTWAKE)
 		/* Enable interrupts again */
 		if (bus->intr && (bus->dhd->busstate == DHD_BUS_DATA)) {
 			bus->intdis = FALSE;
 			bcmsdh_intr_enable(bus->sdh);
 		}
+#endif
 	}
 
 	return BCME_OK;

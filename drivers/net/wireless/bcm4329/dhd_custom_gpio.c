@@ -100,14 +100,14 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 		case WLAN_RESET_OFF:
 			WL_TRACE(("%s: call customer specific GPIO to insert WLAN RESET\n",
 				__FUNCTION__));
-			wlan_setup_power(POWER_OFF, 0);
+			wlan_setup_power(POWER_OFF, 2);
 			WL_ERROR(("=========== WLAN placed in RESET ========\n"));
 		break;
 
 		case WLAN_RESET_ON:
 			WL_TRACE(("%s: callc customer specific GPIO to remove WLAN RESET\n",
 				__FUNCTION__));
-			wlan_setup_power(POWER_ON, 0);
+			wlan_setup_power(POWER_ON, 2);
 			WL_ERROR(("=========== WLAN going back to live  ========\n"));
 		break;
 

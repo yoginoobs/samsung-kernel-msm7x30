@@ -229,19 +229,6 @@ int msm_fb_detect_client(const char *name)
 	return ret;
 }
 
-static struct struct_frame_buf_mark  frame_buf_mark = {
-	.special_mark_1 = (('*' << 24) | ('^' << 16) | ('^' << 8) | ('*' << 0)),
-	.special_mark_2 = (('I' << 24) | ('n' << 16) | ('f' << 8) | ('o' << 0)),
-	.special_mark_3 = (('H' << 24) | ('e' << 16) | ('r' << 8) | ('e' << 0)),
-	.special_mark_4 = (('f' << 24) | ('b' << 16) | ('u' << 8) | ('f' << 0)),
-	.p_fb   = 0,
-	.resX   = 480,//256,
-	.resY   = 800,//320,
-	.bpp    = 24,
-	.frames = 2
-};
-#endif
-
 static ssize_t msm_fb_msm_fb_type(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {

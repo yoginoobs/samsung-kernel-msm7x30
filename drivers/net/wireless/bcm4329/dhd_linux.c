@@ -265,6 +265,26 @@ extern void dhd_pktfilter_offload_set(dhd_pub_t * dhd, char *arg);
 extern void dhd_pktfilter_offload_enable(dhd_pub_t * dhd, char *arg, int enable, int master_mode);
 #endif
 
+#ifdef CUSTOMER_HW_SAMSUNG
+#ifdef READ_MACADDR
+extern int dhd_read_macaddr(struct dhd_info *dhd, struct ether_addr *mac);
+#endif
+#ifdef RDWR_MACADDR
+extern int dhd_check_rdwr_macaddr(struct dhd_info *dhd, dhd_pub_t *dhdp, struct
+ether_addr *mac);
+extern int dhd_write_rdwr_macaddr(struct ether_addr *mac);
+#endif
+#ifdef WRITE_MACADDR
+extern int dhd_write_macaddr(struct ether_addr *mac);
+#endif
+#ifdef USE_CID_CHECK
+extern int dhd_check_module_cid(dhd_pub_t *dhd);
+#endif
+#ifdef GET_MAC_FROM_OTP
+extern int dhd_check_module_mac(dhd_pub_t *dhd);
+#endif
+#endif /* CUSTOMER_HW_SAMSUNG */
+
 /* Interface control information */
 typedef struct dhd_if {
 	struct dhd_info *info;			/* back pointer to dhd_info */
@@ -492,7 +512,6 @@ static char dhd_version[] = "Dongle Host Driver, version " EPI_VERSION_STR
 #endif
 ;
 
-
 #if defined(CONFIG_WIRELESS_EXT)
 struct iw_statistics *dhd_get_wireless_stats(struct net_device *dev);
 #endif /* defined(CONFIG_WIRELESS_EXT) */
@@ -564,11 +583,13 @@ static void dhd_set_packet_filter(int value, dhd_pub_t *dhd)
 #if defined(CONFIG_HAS_EARLYSUSPEND)
 static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 {
+#ifndef CUSTOMER_HW_SAMSUNG
 	int power_mode = PM_MAX;
+#endif
 	/* wl_pkt_filter_enable_t	enable_parm; */
 	char iovbuf[32];
 	int bcn_li_dtim = 3;
-#ifdef CUSTOMER_HW2
+#if defined(CUSTOMER_HW2) && !defined(CUSTOMER_HW_SAMSUNG)
 	uint roamvar = 1;
 #endif /* CUSTOMER_HW2 */
 
@@ -581,8 +602,10 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 			/* Kernel suspended */
 			DHD_TRACE(("%s: force extra Suspend setting \n", __FUNCTION__));
 
+#ifndef CUSTOMER_HW_SAMSUNG
 			dhdcdc_set_ioctl(dhd, 0, WLC_SET_PM,
 				(char *)&power_mode, sizeof(power_mode));
+#endif
 
 			/* Enable packet filter, only allow unicast packet to send up */
 			dhd_set_packet_filter(1, dhd);
@@ -595,7 +618,7 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 			bcm_mkiovar("bcn_li_dtim", (char *)&bcn_li_dtim,
 				4, iovbuf, sizeof(iovbuf));
 			dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf));
-#ifdef CUSTOMER_HW2
+#if defined(CUSTOMER_HW2) && !defined(CUSTOMER_HW_SAMSUNG)
 			/* Disable build-in roaming during suspend */
 			bcm_mkiovar("roam_off", (char *)&roamvar, 4, iovbuf, sizeof(iovbuf));
 			dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf));
@@ -606,9 +629,11 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 			/* Kernel resumed  */
 			DHD_TRACE(("%s: Remove extra suspend setting \n", __FUNCTION__));
 
+#ifndef CUSTOMER_HW_SAMSUNG
 			power_mode = PM_FAST;
 			dhdcdc_set_ioctl(dhd, 0, WLC_SET_PM, (char *)&power_mode,
 				sizeof(power_mode));
+#endif
 
 			/* disable pkt filter */
 			dhd_set_packet_filter(0, dhd);
@@ -618,7 +643,7 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 				4, iovbuf, sizeof(iovbuf));
 
 			dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf));
-#ifdef CUSTOMER_HW2
+#if defined(CUSTOMER_HW2) && !defined(CUSTOMER_HW_SAMSUNG)
 			roamvar = dhd_roam;
 			bcm_mkiovar("roam_off", (char *)&roamvar, 4, iovbuf, sizeof(iovbuf));
 			dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf));
@@ -909,7 +934,11 @@ _dhd_set_multicast_list(dhd_info_t *dhd, int ifidx)
 	}
 }
 
+#ifdef CUSTOMER_HW_SAMSUNG
+int
+#else
 static int
+#endif
 _dhd_set_mac_address(dhd_info_t *dhd, int ifidx, struct ether_addr *addr)
 {
 	char buf[32];
@@ -2219,118 +2248,6 @@ fail:
 	return NULL;
 }
 
-#ifdef READ_MACADDR
-static int
-dhd_read_macaddr(dhd_info_t *dhd)
-{
-	struct file *fp		= NULL;
-	struct file *fpnv	= NULL;
-	char macbuffer[18]	= {0};
-	mm_segment_t oldfs	= {0};
-	char randommac[3]	= {0};
-	char buf[18]		= {0};
-	char* filepath		= "/data/.mac.info";
-	char* nvfilepath	= "/data/.nvmac.info";
-	int ret=0;
-
-	//MAC address copied from nv
-	fpnv = filp_open(nvfilepath, O_RDONLY, 0);
-	if ((fpnv == NULL) || IS_ERR(fpnv)) {
-start_readmac:
-		fpnv = NULL;
-		fp = filp_open(filepath, O_RDONLY, 0);
-		if ((fp==NULL) || IS_ERR(fp)) {
-			/* File Doesn't Exist. Create and write mac addr.*/
-			fp = filp_open(filepath, O_RDWR | O_CREAT, 0666);
-			if(IS_ERR(fp)) {
-				if(fp)
-					filp_close(fp,NULL);
-				if(fpnv)
-					filp_close(fpnv,NULL);
-				DHD_ERROR(("[WIFI] %s: File open error\n", filepath));
-				return -1;
-			}
-
-			oldfs = get_fs();
-			set_fs(get_ds());
-
-		/* Generating the Random Bytes for 3 last octects of the MAC address */
-		get_random_bytes(randommac, 3);
-
-		sprintf(macbuffer,"%02X:%02X:%02X:%02X:%02X:%02X\n",
-			0x60,0xd0,0xa9,randommac[0],randommac[1],randommac[2]);
-			DHD_INFO(("[WIFI] The Random Generated MAC ID : %s\n", macbuffer));
-			printk("[WIFI] The Random Generated MAC ID : %s\n", macbuffer);
-
-			if(fp->f_mode & FMODE_WRITE) {
-				ret = fp->f_op->write(fp, (const char *)macbuffer, sizeof(macbuffer), &fp->f_pos);
-				if(ret < 0)
-					DHD_ERROR(("[WIFI] Mac address [%s] Failed to write into File: %s\n", macbuffer, filepath));
-				else
-					DHD_INFO(("[WIFI] Mac address [%s] written into File: %s\n", macbuffer, filepath));
-			}
-			set_fs(oldfs);
-		}
-		/* Reading the MAC Address from .mac.info file( the existed file or just created file)*/
-		//rtn_value=kernel_read(fp, fp->f_pos, buf, 18);
-		ret = kernel_read(fp, 0, buf, 18);
-	}
-	else {
-		/* Reading the MAC Address from .nvmac.info file( the existed file or just created file)*/
-		ret = kernel_read(fpnv, 0, buf, 18);
-		buf[17] ='\0';   // to prevent abnormal string display when mac address is displayed on the screen.
-		printk("Read MAC : [%s] [%d] \r\n" , buf, strncmp(buf , "00:00:00:00:00:00" , 17));
-		if(strncmp(buf , "00:00:00:00:00:00" , 17) == 0) {
-			filp_close(fpnv, NULL);
-			goto start_readmac;
-		}
-
-		fp = filp_open(filepath, O_RDWR | O_CREAT, 0666); // File is always created.
-			if(IS_ERR(fp)) {
-				DHD_ERROR(("[WIFI] %s: File open error\n", filepath));
-			if (fpnv)
-				filp_close(fpnv, NULL);
-				return -1;
-			}
-		else {
-			oldfs = get_fs();
-			set_fs(get_ds());
-
-			if(fp->f_mode & FMODE_WRITE) {
-				ret = fp->f_op->write(fp, (const char *)buf, sizeof(buf), &fp->f_pos);
-				if(ret < 0)
-					DHD_ERROR(("[WIFI] Mac address [%s] Failed to write into File: %s\n", buf, filepath));
-				else
-					DHD_INFO(("[WIFI] Mac address [%s] written into File: %s\n", buf, filepath));
-			}
-			set_fs(oldfs);
-
-		ret = kernel_read(fp, 0, buf, 18);
-		}
-	}
-
-	if(ret)
-		sscanf(buf,"%02X:%02X:%02X:%02X:%02X:%02X",
-			   &dhd->pub.mac.octet[0], &dhd->pub.mac.octet[1], &dhd->pub.mac.octet[2],
-			   &dhd->pub.mac.octet[3], &dhd->pub.mac.octet[4], &dhd->pub.mac.octet[5]);
-	else
-		DHD_ERROR(("dhd_bus_start: Reading from the '%s' returns 0 bytes\n", filepath));
-
-	if (fp)
-		filp_close(fp, NULL);
-	if (fpnv)
-		filp_close(fpnv, NULL);
-
-	/* Writing Newly generated MAC ID to the Dongle */
-	if (0 == _dhd_set_mac_address(dhd, 0, &dhd->pub.mac))
-		DHD_INFO(("dhd_bus_start: MACID is overwritten\n"));
-	else
-		DHD_ERROR(("dhd_bus_start: _dhd_set_mac_address() failed\n"));
-
-    return 0;
-}
-#endif /* READ_MACADDR */
-
 int
 dhd_bus_start(dhd_pub_t *dhdp)
 {
@@ -2392,11 +2309,6 @@ dhd_bus_start(dhd_pub_t *dhdp)
 
 	dhd_os_sdunlock(dhdp);
 
-#ifdef READ_MACADDR
-        if (dhd_read_macaddr(dhd) < 0)
-                return -ENODEV;
-#endif
-
 #ifdef EMBEDDED_PLATFORM
 	bcm_mkiovar("event_msgs", dhdp->eventmask, WL_EVENTING_MASK_LEN, iovbuf, sizeof(iovbuf));
 	dhdcdc_query_ioctl(dhdp, 0, WLC_GET_VAR, iovbuf, sizeof(iovbuf));
@@ -2436,11 +2348,28 @@ dhd_bus_start(dhd_pub_t *dhdp)
 	dhdp->pktfilter[3] = NULL;
 #endif /* EMBEDDED_PLATFORM */
 
+#ifdef CUSTOMER_HW_SAMSUNG
+#ifdef READ_MACADDR
+	dhd_read_macaddr(dhd, &dhd->pub.mac);
+#endif
+#ifdef RDWR_MACADDR
+	dhd_check_rdwr_macaddr(dhd, &dhd->pub, &dhd->pub.mac);
+#endif
+#endif /* CUSTOMER_HW_SAMSUNG */
 	/* Bus is ready, do any protocol initialization */
 	if ((ret = dhd_prot_init(&dhd->pub)) < 0)
 		return ret;
 
 	return 0;
+
+#ifdef CUSTOMER_HW_SAMSUNG
+#ifdef RDWR_MACADDR
+	dhd_write_rdwr_macaddr(&dhd->pub.mac);
+#endif
+#ifdef WRITE_MACADDR
+	dhd_write_macaddr(&dhd->pub.mac);
+#endif
+#endif /* CUSTOMER_HW_SAMSUNG */
 }
 
 int
@@ -3051,10 +2980,6 @@ dhd_os_sdtxunlock(dhd_pub_t *pub)
 
 #ifdef DHD_USE_STATIC_BUF
 
-#if defined(CUSTOMER_HW_SAMSUNG)
-extern void *wlan_mem_prealloc(int section, unsigned long size);
-#endif
-
 void * dhd_os_prealloc(int section, unsigned long size)
 {
 #if defined(CUSTOMER_HW2) && defined(CONFIG_WIFI_CONTROL_FUNC)
@@ -3073,20 +2998,7 @@ void * dhd_os_prealloc(int section, unsigned long size)
 	DHD_ERROR(("can't alloc section %d\n", section));
 	return 0;
 #else
-#if defined(CUSTOMER_HW_SAMSUNG)
-	void *alloc_ptr = NULL;
-	alloc_ptr = wlan_mem_prealloc(section, size);
-	if (alloc_ptr)
-	{
-		DHD_INFO(("success alloc section %d\n", section));
-		bzero(alloc_ptr, size);
-		return alloc_ptr;
-	}
-	DHD_ERROR(("can't alloc section %d\n", section));
-	return 0;
-#else
 return MALLOC(0, size);
-#endif /* CUSTOMER_HW_SAMSUNG */
 #endif /* #if defined(CUSTOMER_HW2) && defined(CONFIG_WIFI_CONTROL_FUNC) */
 }
 #endif /* DHD_USE_STATIC_BUF */
@@ -3277,9 +3189,6 @@ void
 dhd_dev_init_ioctl(struct net_device *dev)
 {
 	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
-         /*Writing STA's MAC ID to the Dongle for SOFTAP*/
-        if( _dhd_set_mac_address(dhd,0,&dhd->pub.mac) == 0)
-           DHD_INFO(("dhd_bus_start: MAC ID is overwritten\n"));
 	dhd_preinit_ioctls(&dhd->pub);
 }
 

@@ -287,6 +287,9 @@ extern void dhd_txcomplete(dhd_pub_t *dhdp, void *txp, bool success);
 /* Query ioctl */
 extern int  dhdcdc_query_ioctl(dhd_pub_t *dhd, int ifidx, uint cmd, void *buf, uint len);
 
+/* Set ioctl */
+extern int dhdcdc_set_ioctl(dhd_pub_t *dhd, int ifidx, uint cmd, void *buf, uint len);
+
 /* OS independent layer functions */
 extern int dhd_os_proto_block(dhd_pub_t * pub);
 extern int dhd_os_proto_unblock(dhd_pub_t * pub);

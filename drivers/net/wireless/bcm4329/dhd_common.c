@@ -55,6 +55,11 @@ int dhd_msg_level;
 char fw_path[MOD_PARAM_PATHLEN];
 char nv_path[MOD_PARAM_PATHLEN];
 
+#ifdef CONFIG_CONTROL_PM
+bool g_pm_control;
+void sec_control_pm(dhd_pub_t *dhd, uint *);
+#endif
+
 /* Last connection success/failure status */
 uint32 dhd_conn_event;
 uint32 dhd_conn_status;
@@ -65,7 +70,6 @@ uint32 dhd_conn_reason;
 #define dtoh32(i) i
 #define dtoh16(i) i
 
-extern int dhdcdc_set_ioctl(dhd_pub_t *dhd, int ifidx, uint cmd, void *buf, uint len);
 extern void dhd_ind_scan_confirm(void *h, bool status);
 extern int dhd_wl_ioctl(dhd_pub_t *dhd, uint cmd, char *buf, uint buflen);
 void dhd_iscan_lock(void);
@@ -1315,6 +1319,22 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	int scan_assoc_time = 40;
 	int scan_unassoc_time = 40;
 	uint32 listen_interval = LISTEN_INTERVAL; /* Default Listen Interval in Beacons */
+#ifdef CUSTOMER_HW_SAMSUNG
+#ifdef ROAM_ENABLE
+	uint roamvar = 0;
+	int roam_trigger[2] = {-75, WLC_BAND_ALL};
+	int roam_scan_period[2] = {10, WLC_BAND_ALL};
+	int roam_delta[2] = {10, WLC_BAND_ALL};
+#ifdef FULL_ROAMING_SCAN_PERIOD_60_SEC
+	int roam_fullscan_period = 60;
+#else /* FULL_ROAMING_SCAN_PERIOD_60_SEC */
+	int roam_fullscan_period = 120;
+#endif /* FULL_ROAMING_SCAN_PERIOD_60_SEC */
+#else
+	uint roamvar = 1;
+#endif
+#endif /* CUSTOMER_HW_SAMSUNG */
+
 #if defined(SOFTAP)
 	uint dtim = 1;
 #endif
@@ -1382,6 +1402,23 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	if ((ret = dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf))) < 0)
 		DHD_ERROR(("%s assoc_listen failed %d\n", __FUNCTION__, ret));
 
+#ifdef CUSTOMER_HW_SAMSUNG
+/* Disable built-in roaming to allowed ext supplicant to take care of roaming */
+	bcm_mkiovar("roam_off", (char *)&roamvar, 4, iovbuf, sizeof(iovbuf));
+	dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf));
+#ifdef ROAM_ENABLE
+	dhdcdc_set_ioctl(dhd, 0, WLC_SET_ROAM_TRIGGER, roam_trigger,
+			sizeof(roam_trigger));
+	dhdcdc_set_ioctl(dhd, 0, WLC_SET_ROAM_SCAN_PERIOD, roam_scan_period,
+			sizeof(roam_scan_period));
+	dhdcdc_set_ioctl(dhd, 0, WLC_SET_ROAM_DELTA, roam_delta,
+			sizeof(roam_delta));
+	bcm_mkiovar("fullroamperiod", (char *)&roam_fullscan_period, 4, iovbuf,
+			sizeof(iovbuf));
+	dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf));
+#endif
+#endif
+
 	/* query for 'ver' to get version info from firmware */
 	memset(buf, 0, sizeof(buf));
 	ptr = buf;
@@ -1391,8 +1428,12 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	/* Print fw version info */
 	DHD_ERROR(("Firmware version = %s\n", buf));
 
+#ifdef CONFIG_CONTROL_PM
+	sec_control_pm(dhd, &power_mode);
+#else
 	/* Set PowerSave mode */
 	dhdcdc_set_ioctl(dhd, 0, WLC_SET_PM, (char *)&power_mode, sizeof(power_mode));
+#endif
 
 	/* Match Host and Dongle rx alignment */
 	bcm_mkiovar("bus:txglomalign", (char *)&dongle_align, 4, iovbuf, sizeof(iovbuf));

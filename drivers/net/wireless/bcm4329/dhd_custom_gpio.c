@@ -38,8 +38,10 @@
 #define WL_ERROR(x) printf x
 #define WL_TRACE(x)
 
-#define POWER_OFF	0
-#define POWER_ON	1
+#ifdef CUSTOMER_HW
+extern  void bcm_wlan_power_off(int);
+extern  void bcm_wlan_power_on(int);
+#endif /* CUSTOMER_HW */
 
 #ifdef CUSTOMER_HW2
 int wifi_set_carddetect(int on);
@@ -49,7 +51,9 @@ int wifi_get_mac_addr(unsigned char *buf);
 void *wifi_get_country_code(char *ccode);
 #endif
 
+#ifdef CONFIG_MACH_ANCORA
 extern void wlan_setup_power(int on, int flag);
+#endif
 
 #if defined(OOB_INTR_ONLY)
 
@@ -62,7 +66,11 @@ extern int sdioh_mmc_irq(int irq);
 #endif
 
 /* Customer specific Host GPIO defintion  */
-static int dhd_oob_gpio_num = MSM_GPIO_TO_INT(111);
+#ifdef CONFIG_MACH_ANCORA
+static int dhd_oob_gpio_num = 111;
+#else
+static int dhd_oob_gpio_num = -1; /* GG 19 */
+#endif
 
 module_param(dhd_oob_gpio_num, int, 0644);
 MODULE_PARM_DESC(dhd_oob_gpio_num, "DHD oob gpio number");
@@ -71,6 +79,10 @@ int dhd_customer_oob_irq_map(unsigned long *irq_flags_ptr)
 {
 	int  host_oob_irq = 0;
 
+#if defined(CUSTOMER_HW2) && !defined(CONFIG_MACH_ANCORA)
+	host_oob_irq = wifi_get_irq_number(irq_flags_ptr);
+
+#else /* for NOT  CUSTOMER_HW2 */
 #if defined(CUSTOM_OOB_GPIO_NUM)
 	if (dhd_oob_gpio_num < 0) {
 		dhd_oob_gpio_num = CUSTOM_OOB_GPIO_NUM;
@@ -86,7 +98,14 @@ int dhd_customer_oob_irq_map(unsigned long *irq_flags_ptr)
 	WL_ERROR(("%s: customer specific Host GPIO number is (%d)\n",
 	         __FUNCTION__, dhd_oob_gpio_num));
 
-	host_oob_irq = dhd_oob_gpio_num;
+#if defined(CUSTOMER_HW) || defined(CONFIG_MACH_ANCORA)
+	host_oob_irq = MSM_GPIO_TO_INT(dhd_oob_gpio_num);
+#elif defined CUSTOMER_HW3
+	gpio_request(dhd_oob_gpio_num, "oob irq");
+	host_oob_irq = gpio_to_irq(dhd_oob_gpio_num);
+	gpio_direction_input(dhd_oob_gpio_num);
+#endif /* CUSTOMER_HW || CONFIG_MACH_ANCORA */
+#endif /* CUSTOMER_HW2 */
 
 	return (host_oob_irq);
 }
@@ -100,27 +119,57 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 		case WLAN_RESET_OFF:
 			WL_TRACE(("%s: call customer specific GPIO to insert WLAN RESET\n",
 				__FUNCTION__));
-			wlan_setup_power(POWER_OFF, 0);
+#ifdef CUSTOMER_HW
+			bcm_wlan_power_off(2);
+#endif /* CUSTOMER_HW */
+#ifdef CUSTOMER_HW2
+#ifdef CONFIG_MACH_ANCORA
+			wlan_setup_power(0, 2);
+#else
+			wifi_set_power(0, 0);
+#endif
+#endif
 			WL_ERROR(("=========== WLAN placed in RESET ========\n"));
 		break;
 
 		case WLAN_RESET_ON:
 			WL_TRACE(("%s: callc customer specific GPIO to remove WLAN RESET\n",
 				__FUNCTION__));
-			wlan_setup_power(POWER_ON, 0);
+#ifdef CUSTOMER_HW
+			bcm_wlan_power_on(2);
+#endif /* CUSTOMER_HW */
+#ifdef CUSTOMER_HW2
+#ifdef CONFIG_MACH_ANCORA
+			wlan_setup_power(1, 2);
+#else
+			wifi_set_power(1, 0);
+#endif
+#endif
 			WL_ERROR(("=========== WLAN going back to live  ========\n"));
 		break;
 
 		case WLAN_POWER_OFF:
 			WL_TRACE(("%s: call customer specific GPIO to turn off WL_REG_ON\n",
 				__FUNCTION__));
-			wlan_setup_power(POWER_OFF, 1);
+#ifdef CUSTOMER_HW
+			bcm_wlan_power_off(1);
+#endif /* CUSTOMER_HW */
+#ifdef CONFIG_MACH_ANCORA
+			wlan_setup_power(0, 1);
+#endif
 		break;
 
 		case WLAN_POWER_ON:
 			WL_TRACE(("%s: call customer specific GPIO to turn on WL_REG_ON\n",
 				__FUNCTION__));
-			wlan_setup_power(POWER_ON, 1);
+#ifdef CUSTOMER_HW
+			bcm_wlan_power_on(1);
+			/* Lets customer power to get stable */
+			OSL_DELAY(50);
+#endif /* CUSTOMER_HW */
+#ifdef CONFIG_MACH_ANCORA
+			wlan_setup_power(1, 1);
+#endif
 		break;
 	}
 }

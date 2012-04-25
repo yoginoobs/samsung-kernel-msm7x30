@@ -43,6 +43,13 @@
 #define BCM_MEM_FILENAME_LEN 	24		
 
 #ifdef DHD_USE_STATIC_BUF
+#ifdef CUSTOMER_HW_SAMSUNG
+#define DHD_SKB_HDRSIZE		336
+#define DHD_SKB_1PAGE_BUFSIZE	((PAGE_SIZE*1)-DHD_SKB_HDRSIZE)
+#define DHD_SKB_2PAGE_BUFSIZE	((PAGE_SIZE*2)-DHD_SKB_HDRSIZE)
+#define DHD_SKB_4PAGE_BUFSIZE	((PAGE_SIZE*4)-DHD_SKB_HDRSIZE)
+#endif /* CUSTOMER_HW_SAMSUNG */
+
 #define MAX_STATIC_BUF_NUM 16
 #define STATIC_BUF_SIZE	(PAGE_SIZE*2)
 #define STATIC_BUF_TOTAL_LEN (MAX_STATIC_BUF_NUM*STATIC_BUF_SIZE)
@@ -58,8 +65,15 @@ static bcm_static_buf_t *bcm_static_buf = 0;
 typedef struct bcm_static_pkt {
 	struct sk_buff *skb_4k[MAX_STATIC_PKT_NUM];
 	struct sk_buff *skb_8k[MAX_STATIC_PKT_NUM];
+#ifdef CUSTOMER_HW_SAMSUNG
+	struct sk_buff *skb_16k;
+#endif
 	struct mutex osl_pkt_sem;
+#ifdef CUSTOMER_HW_SAMSUNG
+	unsigned char pkt_use[MAX_STATIC_PKT_NUM * 2 + 1];
+#else
 	unsigned char pkt_use[MAX_STATIC_PKT_NUM*2];
+#endif
 } bcm_static_pkt_t;
 static bcm_static_pkt_t *bcm_static_skb = 0;
 
@@ -214,9 +228,16 @@ osl_attach(void *pdev, uint bustype, bool pkttag)
 		bcm_static_skb = (bcm_static_pkt_t *)((char *)bcm_static_buf + 2048);
 		skb_buff_ptr = dhd_os_prealloc(4, 0);
 
+#ifdef CUSTOMER_HW_SAMSUNG
+		bcopy(skb_buff_ptr, bcm_static_skb,
+			sizeof(struct sk_buff *)*(MAX_STATIC_PKT_NUM * 2 + 1));
+		for (i = 0; i < (MAX_STATIC_PKT_NUM * 2 + 1); i++)
+			bcm_static_skb->pkt_use[i] = 0;
+#else
 		bcopy(skb_buff_ptr, bcm_static_skb, sizeof(struct sk_buff *)*16);
 		for (i = 0; i < MAX_STATIC_PKT_NUM*2; i++)
 			bcm_static_skb->pkt_use[i] = 0;
+#endif /* CUSTOMER_HW_SAMSUNG */
 
 		mutex_init(&bcm_static_skb->osl_pkt_sem);
 	}
@@ -293,6 +314,77 @@ osl_pktfree(osl_t *osh, void *p, bool send)
 }
 
 #ifdef DHD_USE_STATIC_BUF
+#ifdef CUSTOMER_HW_SAMSUNG
+void*
+osl_pktget_static(osl_t *osh, uint len)
+{
+	int i = 0;
+	struct sk_buff *skb;
+
+
+	if (len > DHD_SKB_4PAGE_BUFSIZE) {
+		printk("osl_pktget_static: Do we really need this big skb??"
+			" len=%d\n", len);
+		return osl_pktget(osh, len);
+	}
+
+	down(&bcm_static_skb->osl_pkt_sem);
+
+	if (len <= DHD_SKB_1PAGE_BUFSIZE) {
+		for (i = 0; i < MAX_STATIC_PKT_NUM; i++) {
+			if (bcm_static_skb->pkt_use[i] == 0)
+				break;
+		}
+
+		if (i != MAX_STATIC_PKT_NUM) {
+			bcm_static_skb->pkt_use[i] = 1;
+			up(&bcm_static_skb->osl_pkt_sem);
+
+			skb = bcm_static_skb->skb_4k[i];
+			skb->tail = skb->data + len;
+			skb->len = len;
+
+			return skb;
+		}
+	}
+
+	if (len <= DHD_SKB_2PAGE_BUFSIZE) {
+
+		for (i = 0; i < MAX_STATIC_PKT_NUM; i++) {
+			if (bcm_static_skb->pkt_use[i + MAX_STATIC_PKT_NUM]
+				== 0)
+				break;
+		}
+
+		if (i != MAX_STATIC_PKT_NUM) {
+			bcm_static_skb->pkt_use[i + MAX_STATIC_PKT_NUM] = 1;
+			up(&bcm_static_skb->osl_pkt_sem);
+			skb = bcm_static_skb->skb_8k[i];
+			skb->tail = skb->data + len;
+			skb->len = len;
+
+			return skb;
+		}
+	}
+
+	if (bcm_static_skb->pkt_use[MAX_STATIC_PKT_NUM * 2] == 0) {
+		bcm_static_skb->pkt_use[MAX_STATIC_PKT_NUM * 2] = 1;
+		up(&bcm_static_skb->osl_pkt_sem);
+
+		skb = bcm_static_skb->skb_16k;
+		skb->tail = skb->data + len;
+		skb->len = len;
+
+		return skb;
+	}
+
+	up(&bcm_static_skb->osl_pkt_sem);
+	printk("osl_pktget_static: all static pkt in use!\n");
+	return osl_pktget(osh, len);
+}
+
+#else /* !CUSTOMER_HW_SAMSUNG */
+
 void*
 osl_pktget_static(osl_t *osh, uint len)
 {
@@ -354,7 +446,7 @@ osl_pktget_static(osl_t *osh, uint len)
 	printk("all static pkt in use!\n");
 	return osl_pktget(osh, len);
 }
-
+#endif /* CUSTOMER_HW_SAMSUNG */
 
 void
 osl_pktfree_static(osl_t *osh, void *p, bool send)
@@ -373,6 +465,14 @@ osl_pktfree_static(osl_t *osh, void *p, bool send)
 			return;
 		}
 	}
+#ifdef CUSTOMER_HW_SAMSUNG
+	if (p == bcm_static_skb->skb_16k) {
+		down(&bcm_static_skb->osl_pkt_sem);
+		bcm_static_skb->pkt_use[MAX_STATIC_PKT_NUM * 2] = 0;
+		up(&bcm_static_skb->osl_pkt_sem);
+		return;
+	}
+#endif
 	return osl_pktfree(osh, p, send);
 }
 #endif 

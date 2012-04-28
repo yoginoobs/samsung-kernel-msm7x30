@@ -3968,6 +3968,15 @@ static struct platform_device *snd_devices_ariesve[] __initdata = {
 	&device_headset_voice_search_tx,
 	&device_headset_fmradio_only_rx,
 	&device_speaker_fmradio_only_rx,	
+/* [jseob.kim] VOIP call path */
+        &device_handset_voip_rx,
+        &device_handset_voip_tx,
+        &device_speaker_voip_rx,
+        &device_speaker_voip_tx,
+        &device_headset_voip_rx,
+        &device_headset_voip_tx,
+        &device_bt_sco_voip_rx,
+        &device_bt_sco_voip_tx, 
 };
 #endif
 

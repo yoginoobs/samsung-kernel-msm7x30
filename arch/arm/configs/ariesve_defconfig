@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.35.14
-# Thu Apr 26 09:32:26 2012
+# Sun Apr 29 07:28:13 2012
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -927,7 +927,7 @@ CONFIG_WIRELESS_EXT_SYSFS=y
 #
 # CONFIG_WIMAX is not set
 CONFIG_RFKILL=y
-# CONFIG_RFKILL_PM is not set
+CONFIG_RFKILL_PM=y
 # CONFIG_RFKILL_INPUT is not set
 # CONFIG_NET_9P is not set
 # CONFIG_CAIF is not set
@@ -1163,6 +1163,7 @@ CONFIG_WLAN=y
 # CONFIG_USB_ZD1201 is not set
 # CONFIG_LIBRA_SDIOIF is not set
 CONFIG_BCM4329=m
+CONFIG_BCM4329_SAMSUNG=y
 CONFIG_BCM4329_FW_PATH="/vendor/firmware/fw_bcm4329.bin"
 CONFIG_BCM4329_NVRAM_PATH="/vendor/firmware/nvram_net.txt"
 # CONFIG_HOSTAP is not set
@@ -2530,6 +2531,7 @@ CONFIG_TRACING_SUPPORT=y
 # CONFIG_SAMPLES is not set
 CONFIG_HAVE_ARCH_KGDB=y
 # CONFIG_KGDB is not set
+# CONFIG_TEST_KSTRTOX is not set
 CONFIG_ARM_UNWIND=y
 # CONFIG_DEBUG_USER is not set
 # CONFIG_DEBUG_ERRORS is not set

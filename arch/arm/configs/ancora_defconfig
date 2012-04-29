@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.35.14
-# Fri Apr 27 07:29:10 2012
+# Sun Apr 29 08:22:41 2012
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -2482,6 +2482,7 @@ CONFIG_TRACING_SUPPORT=y
 # CONFIG_SAMPLES is not set
 CONFIG_HAVE_ARCH_KGDB=y
 # CONFIG_KGDB is not set
+# CONFIG_TEST_KSTRTOX is not set
 CONFIG_ARM_UNWIND=y
 # CONFIG_DEBUG_USER is not set
 # CONFIG_DEBUG_ERRORS is not set

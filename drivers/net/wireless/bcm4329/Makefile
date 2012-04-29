@@ -10,7 +10,18 @@ DHDCFLAGS = -DLINUX -DBCMDRIVER -DBCMDONGLEHOST -DDHDTHREAD -DBCMWPA2         \
 	-DKEEP_ALIVE -DPNO_SUPPORT -DEXAMPLE_TABLE                            \
 	-Idrivers/net/wireless/bcm4329 -Idrivers/net/wireless/bcm4329/include
 
-DHDCFLAGS += -DCONFIG_CONTROL_PM -DCUSTOMER_HW_SAMSUNG -DREAD_MACADDR
+ifeq ($(CONFIG_BCM4329_SAMSUNG),y)
+DHDCFLAGS += -DCONFIG_CONTROL_PM -DCUSTOMER_HW_SAMSUNG -DBCM4329_SAMSUNG
+endif
+
+# For MACID management
+ifeq ($(CONFIG_MACH_ANCORA),y)
+DHDCFLAGS += -DREAD_MACADDR
+else ifeq ($(CONFIG_MACH_ANCORA_TMO),y)
+DHDCFLAGS += -DREAD_MACADDR
+else
+DHDCFLAGS += -DWRITE_MACADDR -DU1_MACADDR
+endif
 
 DHDOFILES = dhd_linux.o linux_osl.o bcmutils.o dhd_common.o dhd_custom_gpio.o \
 	wl_iw.o siutils.o sbutils.o aiutils.o hndpmu.o bcmwifi.o dhd_sdio.o   \

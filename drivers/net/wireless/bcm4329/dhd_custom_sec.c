@@ -32,7 +32,7 @@ int dhd_read_macaddr(struct dhd_info *dhd, struct ether_addr *mac)
 	mm_segment_t oldfs   = {0};
 	char randommac[3]    = {0};
 	char buf[18]         = {0};
-#ifdef CONFIG_MACH_ANCORA
+#ifdef BCM4329_SAMSUNG
 	char* filepath	     = "/data/.mac.info";
 #else
 	char *filepath       = "/efs/wifi/.mac.info";

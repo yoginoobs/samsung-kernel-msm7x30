@@ -51,7 +51,7 @@ int wifi_get_mac_addr(unsigned char *buf);
 void *wifi_get_country_code(char *ccode);
 #endif
 
-#ifdef CONFIG_MACH_ANCORA
+#ifdef BCM4329_SAMSUNG
 extern void wlan_setup_power(int on, int flag);
 #endif
 
@@ -66,7 +66,7 @@ extern int sdioh_mmc_irq(int irq);
 #endif
 
 /* Customer specific Host GPIO defintion  */
-#ifdef CONFIG_MACH_ANCORA
+#ifdef BCM4329_SAMSUNG
 static int dhd_oob_gpio_num = 111;
 #else
 static int dhd_oob_gpio_num = -1; /* GG 19 */
@@ -79,7 +79,7 @@ int dhd_customer_oob_irq_map(unsigned long *irq_flags_ptr)
 {
 	int  host_oob_irq = 0;
 
-#if defined(CUSTOMER_HW2) && !defined(CONFIG_MACH_ANCORA)
+#if defined(CUSTOMER_HW2) && !defined(BCM4329_SAMSUNG)
 	host_oob_irq = wifi_get_irq_number(irq_flags_ptr);
 
 #else /* for NOT  CUSTOMER_HW2 */
@@ -98,13 +98,13 @@ int dhd_customer_oob_irq_map(unsigned long *irq_flags_ptr)
 	WL_ERROR(("%s: customer specific Host GPIO number is (%d)\n",
 	         __FUNCTION__, dhd_oob_gpio_num));
 
-#if defined(CUSTOMER_HW) || defined(CONFIG_MACH_ANCORA)
+#if defined(CUSTOMER_HW) || defined(BCM4329_SAMSUNG)
 	host_oob_irq = MSM_GPIO_TO_INT(dhd_oob_gpio_num);
 #elif defined CUSTOMER_HW3
 	gpio_request(dhd_oob_gpio_num, "oob irq");
 	host_oob_irq = gpio_to_irq(dhd_oob_gpio_num);
 	gpio_direction_input(dhd_oob_gpio_num);
-#endif /* CUSTOMER_HW || CONFIG_MACH_ANCORA */
+#endif /* CUSTOMER_HW || BCM4329_SAMSUNG */
 #endif /* CUSTOMER_HW2 */
 
 	return (host_oob_irq);
@@ -123,7 +123,7 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 			bcm_wlan_power_off(2);
 #endif /* CUSTOMER_HW */
 #ifdef CUSTOMER_HW2
-#ifdef CONFIG_MACH_ANCORA
+#ifdef BCM4329_SAMSUNG
 			wlan_setup_power(0, 2);
 #else
 			wifi_set_power(0, 0);
@@ -139,7 +139,7 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 			bcm_wlan_power_on(2);
 #endif /* CUSTOMER_HW */
 #ifdef CUSTOMER_HW2
-#ifdef CONFIG_MACH_ANCORA
+#ifdef BCM4329_SAMSUNG
 			wlan_setup_power(1, 2);
 #else
 			wifi_set_power(1, 0);
@@ -154,7 +154,7 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 #ifdef CUSTOMER_HW
 			bcm_wlan_power_off(1);
 #endif /* CUSTOMER_HW */
-#ifdef CONFIG_MACH_ANCORA
+#ifdef BCM4329_SAMSUNG
 			wlan_setup_power(0, 1);
 #endif
 		break;
@@ -167,7 +167,7 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 			/* Lets customer power to get stable */
 			OSL_DELAY(50);
 #endif /* CUSTOMER_HW */
-#ifdef CONFIG_MACH_ANCORA
+#ifdef BCM4329_SAMSUNG
 			wlan_setup_power(1, 1);
 #endif
 		break;

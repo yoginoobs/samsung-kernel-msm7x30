@@ -60,7 +60,7 @@ static unsigned aux_pcm_gpio[] = {
 static int snddev_ecodec_open_rx(struct snddev_ecodec_state *ecodec)
 {
 	int rc = 0;
-  int pin;     
+	int pin;
 	struct snddev_ecodec_drv_state *drv = &snddev_ecodec_drv;
 	struct msm_afe_config afe_config;
 	int ret = 0;
@@ -75,18 +75,18 @@ static int snddev_ecodec_open_rx(struct snddev_ecodec_state *ecodec)
 			goto done;
 		}
 
-    //yjjung : check again
-    for(pin = 0; pin < ARRAY_SIZE(aux_pcm_gpio); pin++) 
-    {
-  		rc = gpio_tlmm_config(aux_pcm_gpio[pin], GPIO_CFG_ENABLE);
-      
-  		if (rc == 0) {
-  			printk(KERN_ERR
-  				"%s: gpio_tlmm_config(%#x)=%d\n",
-  				__func__, aux_pcm_gpio[pin], rc);
-  		} 
-    }
-    
+	//yjjung : check again
+	for(pin = 0; pin < ARRAY_SIZE(aux_pcm_gpio); pin++)
+	{
+		rc = gpio_tlmm_config(aux_pcm_gpio[pin], GPIO_CFG_ENABLE);
+
+		if (rc == 0) {
+			printk(KERN_ERR
+				"%s: gpio_tlmm_config(%#x)=%d\n",
+				__func__, aux_pcm_gpio[pin], rc);
+		}
+	}
+
 		/* config clocks */
 		clk_enable(drv->lpa_core_clk);
 
@@ -138,8 +138,6 @@ static int snddev_ecodec_open_rx(struct snddev_ecodec_state *ecodec)
 		audio_interct_rpcm_source(AUDIO_ADSP_A);
 
 		clk_disable(drv->lpa_core_clk);
-
-    MM_INFO("conf_aux_codec_intf =0x%x", ecodec->data->conf_aux_codec_intf);
 
 		/* send AUX_CODEC_CONFIG to AFE */
 		rc = afe_config_aux_codec(ecodec->data->conf_pcm_ctl_val,
@@ -480,7 +478,6 @@ static int __init snddev_ecodec_init(void)
 	if (IS_ERR(ecodec_drv->lpa_core_clk))
 		goto error_lpa_core_clk;
 
-      printk("[HSS] clk = %d\n", clk_get_rate(ecodec_drv->ecodec_clk) );
 
 	mutex_init(&ecodec_drv->dev_lock);
 	ecodec_drv->rx_active = 0;

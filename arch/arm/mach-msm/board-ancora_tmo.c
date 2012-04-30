@@ -161,12 +161,16 @@ EXPORT_SYMBOL(sec_class);
 struct device *switch_dev;
 EXPORT_SYMBOL(switch_dev);
 
-#define MSM_PMEM_SF_SIZE	0x1E00000	// MM team, QC request
-#define MSM_FB_SIZE			0xA46000	// ARGB8888 double duffrting
-#define MSM_PMEM_ADSP_SIZE      0x1E20000 // MM team request (before 0x1CD0000)
+#define MSM_PMEM_SF_SIZE		0x1A00000	// MM team, QC request
+#ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
+#define MSM_FB_SIZE			0x780000
+#else
+#define MSM_FB_SIZE			0x500000
+#endif
+#define MSM_PMEM_ADSP_SIZE      	0x2000000	// MM team request (before 0x1CD0000)
 #define MSM_FLUID_PMEM_ADSP_SIZE	0x2800000
-#define PMEM_KERNEL_EBI1_SIZE   0x600000
-#define MSM_PMEM_AUDIO_SIZE     0x200000
+#define PMEM_KERNEL_EBI1_SIZE   	0x600000
+#define MSM_PMEM_AUDIO_SIZE     	0x200000
 
 #define PMIC_GPIO_INT		27
 #define PMIC_VREG_WLAN_LEVEL	2900
@@ -3811,7 +3815,7 @@ static struct usb_mass_storage_platform_data usb_mass_storage_pdata = {
 	.nluns          = 0x02,
 //	.buf_size       = 16384,
 	.vendor         = "SAMSUNG",
-	.product        = "GT-I9001 Card",
+	.product        = "SGH-T679 Card",
 	.release        = 0xffff,
 };
 
@@ -5308,79 +5312,106 @@ static struct platform_device android_pmem_audio_device = {
        .dev = { .platform_data = &android_pmem_audio_pdata },
 };
 
-static struct kgsl_platform_data kgsl_pdata = {
-#ifdef CONFIG_MSM_NPA_SYSTEM_BUS
-	/* NPA Flow IDs */
-	.high_axi_3d = MSM_AXI_FLOW_3D_GPU_HIGH,
-	.high_axi_2d = MSM_AXI_FLOW_2D_GPU_HIGH,
-#else
-	/* AXI rates in KHz */
-	.high_axi_3d = 192000,
-	.high_axi_2d = 192000,
-#endif
-	.max_grp2d_freq = 0,
-	.min_grp2d_freq = 0,
-	.set_grp2d_async = NULL, /* HW workaround, run Z180 SYNC @ 192 MHZ */
-	.max_grp3d_freq = 245760000,
-	.min_grp3d_freq = 192 * 1000*1000,
-	.set_grp3d_async = set_grp3d_async,
-	.imem_clk_name = "imem_clk",
-	.grp3d_clk_name = "grp_clk",
-	.grp3d_pclk_name = "grp_pclk",
-#ifdef CONFIG_MSM_KGSL_2D
-	.grp2d0_clk_name = "grp_2d_clk",
-	.grp2d0_pclk_name = "grp_2d_pclk",
-#else
-	.grp2d0_clk_name = NULL,
-#endif
-	.idle_timeout_3d = HZ/20,
-	.idle_timeout_2d = HZ/10,
-	.nap_allowed = false,
-#ifdef CONFIG_KGSL_PER_PROCESS_PAGE_TABLE
-	.pt_va_size = SZ_32M,
-	/* Maximum of 32 concurrent processes */
-	.pt_max_count = 32,
-#else
-	.pt_va_size = SZ_128M,
-	/* We only ever have one pagetable for everybody */
-	.pt_max_count = 1,
-#endif
-};
-
-static struct resource kgsl_resources[] = {
+static struct resource kgsl_3d0_resources[] = {
 	{
-		.name = "kgsl_reg_memory",
+		.name = KGSL_3D0_REG_MEMORY,
 		.start = 0xA3500000, /* 3D GRP address */
 		.end = 0xA351ffff,
 		.flags = IORESOURCE_MEM,
 	},
 	{
-		.name = "kgsl_yamato_irq",
+		.name = KGSL_3D0_IRQ,
 		.start = INT_GRP_3D,
 		.end = INT_GRP_3D,
 		.flags = IORESOURCE_IRQ,
 	},
+};
+
+static struct kgsl_device_platform_data kgsl_3d0_pdata = {
+	.pwr_data = {
+		.pwrlevel = {
+			{
+				.gpu_freq = 245760000,
+				.bus_freq = 192000000,
+			},
+			{
+				.gpu_freq = 192000000,
+				.bus_freq = 0,
+			},
+		},
+		.init_level = 0,
+		.num_levels = 2,
+		.set_grp_async = set_grp3d_async,
+		.idle_timeout = HZ/20,
+		.nap_allowed = true,
+	},
+	.clk = {
+		.name = {
+			.clk = "grp_clk",
+			.pclk = "grp_pclk",
+		},
+	},
+	.imem_clk_name = {
+		.clk = "imem_clk",
+		.pclk = NULL,
+	},
+};
+
+static struct platform_device msm_kgsl_3d0 = {
+	.name = "kgsl-3d0",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(kgsl_3d0_resources),
+	.resource = kgsl_3d0_resources,
+	.dev = {
+		.platform_data = &kgsl_3d0_pdata,
+	},
+};
+
+static struct resource kgsl_2d0_resources[] = {
 	{
-		.name = "kgsl_2d0_reg_memory",
+		.name = KGSL_2D0_REG_MEMORY,
 		.start = 0xA3900000, /* Z180 base address */
 		.end = 0xA3900FFF,
 		.flags = IORESOURCE_MEM,
 	},
 	{
-		.name  = "kgsl_2d0_irq",
+		.name = KGSL_2D0_IRQ,
 		.start = INT_GRP_2D,
 		.end = INT_GRP_2D,
 		.flags = IORESOURCE_IRQ,
 	},
 };
 
-static struct platform_device msm_device_kgsl = {
-	.name = "kgsl",
-	.id = -1,
-	.num_resources = ARRAY_SIZE(kgsl_resources),
-	.resource = kgsl_resources,
+static struct kgsl_device_platform_data kgsl_2d0_pdata = {
+	.pwr_data = {
+		.pwrlevel = {
+			{
+				.gpu_freq = 0,
+				.bus_freq = 192000000,
+			},
+		},
+		.init_level = 0,
+		.num_levels = 1,
+		/* HW workaround, run Z180 SYNC @ 192 MHZ */
+		.set_grp_async = NULL,
+		.idle_timeout = HZ/10,
+		.nap_allowed = true,
+	},
+	.clk = {
+		.name = {
+			.clk = "grp_2d_clk",
+			.pclk = "grp_2d_pclk",
+		},
+	},
+};
+
+static struct platform_device msm_kgsl_2d0 = {
+	.name = "kgsl-2d0",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(kgsl_2d0_resources),
+	.resource = kgsl_2d0_resources,
 	.dev = {
-		.platform_data = &kgsl_pdata,
+		.platform_data = &kgsl_2d0_pdata,
 	},
 };
 
@@ -5614,7 +5645,6 @@ static struct mddi_platform_data mddi_pdata = {
 int mdp_core_clk_rate_table[] = {
 	122880000,
 	122880000,
-	122880000,
 	192000000,
 	192000000,
 };
@@ -5625,6 +5655,7 @@ static struct msm_panel_common_pdata mdp_pdata = {
 	.mdp_core_clk_rate = 122880000,
 	.mdp_core_clk_table = mdp_core_clk_rate_table,
 	.num_mdp_clk = ARRAY_SIZE(mdp_core_clk_rate_table),
+	.mdp_rev = MDP_REV_40,
 };
 
 static struct msm_gpio lcd_panel_on_gpios[] = {
@@ -6456,7 +6487,8 @@ static struct platform_device *devices[] __initdata = {
 #endif
 	&msm_bt_power_device,//sc47.yun
 	&msm_bluesleep_device, //sc47.yun
-	&msm_device_kgsl,
+	&msm_kgsl_3d0,
+	&msm_kgsl_2d0,
 #if defined (CONFIG_SENSOR_S5K4ECGX)
 	&msm_camera_sensor_s5k4ecgx,
 #endif

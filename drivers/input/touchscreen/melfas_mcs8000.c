@@ -72,6 +72,7 @@ int melfas_mcs8000_ts_suspend(pm_message_t mesg);
 int melfas_mcs8000_ts_resume();
 extern int mcsdl_download_binary_data(void);
 extern int mcsdl_download_binary_data_55T(void);
+extern int mcsdl_ISC_download_binary_data(void);
 #if defined(CONFIG_MACH_ANCORA) //#if !defined(CONFIG_MACH_ANCORA_TMO)  
 extern int mcsdl_download_binary_data_HW02(void);
 #endif
@@ -84,6 +85,7 @@ enum {
 	TKEY_LED_ON,
 	TKEY_LED_SUSPEND,
 	TKEY_LED_RESUME,
+	TKEY_LED_FORCEDOFF
 };
 static unsigned int led_state = TKEY_LED_OFF;
 
@@ -739,6 +741,48 @@ void firmware_update()
 	}
 }
 
+void firmware_update_manual()
+{
+	int ret;
+
+    printk("[TOUCH] firmware_update_manual \n");
+	printk("[TOUCH] Melfas  H/W version: 0x%02x.\n", melfas_mcs8000_ts->hw_rev);
+	printk("[TOUCH] Current F/W version: 0x%02x.\n", melfas_mcs8000_ts->fw_ver);
+
+	disable_irq(melfas_mcs8000_ts->client->irq);
+	local_irq_disable();
+
+	ret = mcsdl_ISC_download_binary_data();    
+	
+	local_irq_enable();
+	enable_irq(melfas_mcs8000_ts->client->irq);
+	
+	melfas_mcs8000_read_version();
+
+    printk("[TSP] firmware update result. ret = %d\n", ret);
+    
+	if(ret > 0){
+		if (melfas_mcs8000_ts->hw_rev < 0) {
+			printk(KERN_ERR "i2c_transfer failed\n");
+		}
+		
+		if (melfas_mcs8000_ts->fw_ver < 0) {
+			printk(KERN_ERR "i2c_transfer failed\n");
+		}
+		
+		printk("[TOUCH] Firmware update success! [Melfas H/W version: 0x%02x., Current F/W version: 0x%02x.]\n", melfas_mcs8000_ts->hw_rev, melfas_mcs8000_ts->fw_ver);
+		qt_firm_status_data=2;			
+	}
+	else {
+		qt_firm_status_data=3;
+		printk("[TOUCH] Firmware update failed.. %d RESET!\n", ret);
+		mcsdl_vdd_off();
+		mdelay(500);
+		mcsdl_vdd_on();
+		mdelay(200);
+	}
+}
+
 static ssize_t set_qt_update_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
     int count;
@@ -746,30 +790,9 @@ static ssize_t set_qt_update_show(struct device *dev, struct device_attribute *a
     printk(" %s : START \n",__func__); 
     qt_firm_status_data=2;    //start firmware updating
     
-	/* firmware update code */	
-	if(melfas_mcs8000_ts->window_ver==MELFAS_WINDOW_55T)	// Window panel 0.55T
-	{	
-		if(board_hw_revision >= 4 && melfas_mcs8000_ts->fw_ver < NEW_FIRMWARE_VERSION_55T)
-		{
-			printk("[TSP] firmware update window 0.55T\n");
-            qt_firm_status_data=1;
-			firmware_update();
-		}
-	}
-	else if(melfas_mcs8000_ts->window_ver==MELFAS_WINDOW_70T) // Window panel 0.7T
-	{	
-	    if ((melfas_mcs8000_ts->hw_rev == 0x03) && (board_hw_revision >= 4) && (melfas_mcs8000_ts->fw_ver < NEW_FIRMWARE_VERSION))
-		{
-			printk("[TSP] firmware update window 0.7T\n");
-            qt_firm_status_data=1;
-			firmware_update();
-		}
-	}
-    
-	msleep(200);
-	melfas_mcs8000_ts_suspend(PMSG_SUSPEND);
-	msleep(200);
-	melfas_mcs8000_ts_resume();
+	/* firmware update code */	 
+    qt_firm_status_data=1;
+    firmware_update_manual();
        
     if(qt_firm_status_data == 3) {
         count = sprintf(buf,"FAIL\n");
@@ -2491,7 +2514,7 @@ int melfas_mcs8000_ts_suspend(pm_message_t mesg)
 		if (rc) 
 			pr_err("%s: LDO2 vreg disable failed (%d)\n", __func__, rc);		
         else 
-            led_state == TKEY_LED_OFF;
+            led_state = TKEY_LED_FORCEDOFF;
 	}
         
 	gpio_set_value(GPIO_I2C0_SCL, 0);  // TOUCH SCL DIS
@@ -2508,6 +2531,7 @@ int melfas_mcs8000_ts_suspend(pm_message_t mesg)
 
 int melfas_mcs8000_ts_resume()
 {
+    int rc = 0;
     printk("%s\n", __func__);
     gpio_tlmm_config(GPIO_CFG(GPIO_I2C0_SCL, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_16MA),GPIO_CFG_ENABLE);
     gpio_tlmm_config(GPIO_CFG(GPIO_I2C0_SDA, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_16MA),GPIO_CFG_ENABLE);
@@ -2521,6 +2545,17 @@ int melfas_mcs8000_ts_resume()
     melfas_mcs8000_ts->suspended = false;
     enable_irq(melfas_mcs8000_ts->client->irq);  
 
+    if(led_state == TKEY_LED_FORCEDOFF) { 
+        rc = vreg_enable(vreg_ldo2); 
+
+        printk("%s TKEY_LED_FORCEDOFF  rc = %d \n", __func__,rc);               
+
+        if (rc)  
+            pr_err("%s: LDO2 vreg disable failed (%d)\n", __func__, rc);		 
+        else  
+            led_state = TKEY_LED_ON; 
+    } 
+   
     return 0;
 }
 #if 0 // blocked for now.. we will gen touch when suspend func is called

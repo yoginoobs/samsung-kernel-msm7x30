@@ -285,12 +285,10 @@ static struct clk_freq_tbl clk_tbl_mdp_core[] = {
 };
 
 static struct clk_freq_tbl clk_tbl_mdp_lcdc[] = {
-	F_MND16(       0, GND,  1,   0,   0, NONE),
-	F_MND16(24576000, LPXO, 1,   0,   0, NOMINAL),
-	F_MND16(30720000, PLL3, 4,   1,   6, NOMINAL),
-	F_MND16(32768000, PLL3, 3,   2,  15, NOMINAL),
-	F_MND16(40960000, PLL3, 2,   1,   9, NOMINAL),
-	F_MND16(73728000, PLL3, 2,   1,   5, NOMINAL),
+	F_MND16(24576000, PLL3, 3, 1, 10, NOMINAL),
+	F_MND16(26482000, PLL3, 1, 2, 29, NOMINAL),
+	F_MND16(30720000, PLL3, 4, 1, 6, NOMINAL),
+	F_MND16(40960000, PLL3, 2, 1, 9, NOMINAL),
 	F_END,
 };
 
@@ -401,9 +399,8 @@ static struct clk_freq_tbl clk_tbl_mfc[] = {
 
 static struct clk_freq_tbl clk_tbl_spi[] = {
 	F_MND8(       0,  0,  0, GND,  1,   0,     0, NONE),
-	F_MND8( 9963243, 19, 12, PLL3, 4,   2,    37, NOMINAL),
-	F_MND8(24576000, 19, 12, LPXO, 1,   0,     0, NOMINAL),
-	F_MND8(26331429, 19, 12, PLL3, 4,   1,     7, NOMINAL),
+	F_MND8( 9963243, 19, 12, PLL3, 4,   7,   129, NOMINAL),
+	F_MND8(26331429, 19, 12, PLL3, 4,  34,   241, NOMINAL),
 	F_END,
 };
 
@@ -675,7 +672,7 @@ struct clk_local soc_clk_local_tbl[] = {
 	CLK_SLAVE(VFE_CAMIF, CAM_VFE_NS_REG, BIT(15), VFE, CLK_HALT_STATEC_REG,
 			HALT, 13, 0x7000),
 	CLK_SLAVE(CSI0_VFE, CSI_NS_REG, BIT(15), VFE, CLK_HALT_STATEC_REG,
-			HALT, 16, 0x7200),
+			HALT, 16, 0),
 
 	CLK_MND16(SDAC, SDAC_NS_REG, BIT(9), BIT(11), clk_tbl_sdac,
 			NONE, chld_sdac, CLK_HALT_STATEA_REG, HALT, 2, 0x4D60),
@@ -728,7 +725,7 @@ struct clk_local soc_clk_local_tbl[] = {
 			0x0F),
 
 	CLK_MND8(CSI0, CSI_NS_REG, 24, 17, BIT(9), BIT(11), clk_tbl_csi, NULL,
-			CLK_HALT_STATEC_REG, HALT, 17, 0x7100),
+			CLK_HALT_STATEC_REG, HALT, 17, 0x5F00),
 
 	/* For global clocks to be on we must have GLBL_ROOT_ENA set */
 	CLK_1RATE(GLBL_ROOT, GLBL_CLK_ENA_SC_REG, 0, BIT(29), clk_tbl_axi,
@@ -744,7 +741,7 @@ struct clk_local soc_clk_local_tbl[] = {
 	CLK_GLBL(CAMIF_PAD_P,	GLBL_CLK_ENA_SC_REG,	BIT(9),
 				GLBL_CLK_STATE_REG,	HALT_VOTED, 9, 0x1A),
 	CLK_GLBL(CSI0_P,	GLBL_CLK_ENA_SC_REG,	BIT(30),
-				GLBL_CLK_STATE_REG,	HALT_VOTED, 30, 0x7300),
+				GLBL_CLK_STATE_REG,	HALT_VOTED, 30, 0),
 	CLK_GLBL(EMDH_P,	GLBL_CLK_ENA_2_SC_REG,	BIT(3),
 				GLBL_CLK_STATE_2_REG,	HALT_VOTED, 3, 0x03),
 	CLK_GLBL(GRP_2D_P,	GLBL_CLK_ENA_SC_REG,	BIT(24),

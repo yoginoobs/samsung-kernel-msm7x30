@@ -25,7 +25,12 @@
 #include <media/msm_camera.h>
 #include <mach/gpio.h>
 
+#if defined(CONFIG_MACH_ANCORA)
 #include "s5k4ecgx.h"
+#elif defined(CONFIG_MACH_APACHE)
+#include "s5k4ecgx_I847.h"
+#endif
+
 #include <mach/camera.h>
 #include <mach/vreg.h>
 #include <linux/io.h>
@@ -131,7 +136,7 @@ bool isPreviewReturnWrite = false;
 static unsigned int i2c_retry = 0;
 static unsigned int probe_init_retry = 0;
 static int HD_mode = 0;
-static int b_esd_detected=false;
+int b_esd_detected=false;
 
 struct s5k4ecgx_work {
     struct work_struct work;
@@ -1232,7 +1237,11 @@ int s5k4ecgx_set_af(char value)
                     if(s5k4ecgx_status.current_lux > 0x0032)break;
                 }
                 s5k4ecgx_sensor_write(0x0028, 0x7000);
+#if defined(CONFIG_MACH_ANCORA)
                 s5k4ecgx_sensor_write(0x002A, 0x057C);
+#elif defined(CONFIG_MACH_APACHE)
+                s5k4ecgx_sensor_write(0x002A, 0x0588);
+#endif
                 s5k4ecgx_sensor_write(0x0F12, 0x0000);
                 if(s5k4ecgx_status.camera_mode == EXT_CFG_CAM_MODE_FACTORY_TEST)// || s5k4ecgx_status.afmode == EXT_CFG_AF_SET_MACRO)
                     s5k4ecgx_set_flash(MACRO_FLASH);
@@ -1247,12 +1256,17 @@ int s5k4ecgx_set_af(char value)
             if(pre_flash_on)
             {
                 s5k4ecgx_sensor_write(0x0028, 0x7000);
+#if defined(CONFIG_MACH_ANCORA)
                 s5k4ecgx_sensor_write(0x002A, 0x057C);
+#elif defined(CONFIG_MACH_APACHE)
+                s5k4ecgx_sensor_write(0x002A, 0x0588);
+#endif
                 s5k4ecgx_sensor_write(0x0F12, 0x0002);
-            }
+//            }
             s5k4ecgx_set_flash(PRE_FLASH_OFF);
             mdelay(200);
             pre_flash_on=0;
+            }
         break;
         case EXT_CFG_AF_POWEROFF :
             CAMDRV_DEBUG("%s : EXT_CFG_AF_POWEROFF \n", __func__);

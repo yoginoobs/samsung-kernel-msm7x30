@@ -3788,7 +3788,7 @@ static struct usb_mass_storage_platform_data usb_mass_storage_pdata = {
 	.nluns          = 0x02,
 //	.buf_size       = 16384,
 	.vendor         = "SAMSUNG",
-	.product        = "GT-I8150 Card",  //FSW JeongJaeWook 2011-07-25 [P110722-0385] phone name display error.
+	.product        = "GT-I8150 Card",
 	.release        = 0xffff,
 };
 

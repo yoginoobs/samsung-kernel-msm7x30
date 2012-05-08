@@ -464,7 +464,6 @@ static noinline void __init_refok rest_init(void)
 }
 
 unsigned int charging_boot=0;
-EXPORT_SYMBOL(charging_boot);
 unsigned int board_hw_revision;
 #if defined(CONFIG_MACH_ANCORA) || defined(CONFIG_MACH_ANCORA_TMO)
 unsigned int board_lcd_hw_revision;
@@ -472,6 +471,10 @@ unsigned int board_lcd_hw_revision;
 int no_console = 0;
 
 unsigned int boot_check_wrong_battery = 0;
+#if defined(CONFIG_MICROUSB_DEBUG)
+char osbl_mUSB_stat[9]={0,};
+char lk_mUSB_stat[9]={0,};
+#endif
 
 /* Check for early params. */
 static int __init do_early_param(char *param, char *val)
@@ -527,6 +530,20 @@ static int __init do_early_param(char *param, char *val)
 		else	
 			board_lcd_hw_revision = 0;
 		printk("Ancora LCD revision : 0x0%d\n",board_lcd_hw_revision);
+	}
+#endif
+
+#if defined(CONFIG_MICROUSB_DEBUG)
+	if ( (strcmp(param, "osbl") == 0 ) )
+	{
+		strncpy(osbl_mUSB_stat,val,8);
+		printk("[mUSB] osbl : %s\n",val);
+	}
+
+	if ( (strcmp(param, "lk") == 0 ) )
+	{
+		strncpy(lk_mUSB_stat,val,8);
+		printk("[mUSB] lk : %s\n",val);
 	}
 #endif
 

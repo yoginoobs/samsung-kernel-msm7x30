@@ -560,6 +560,11 @@ static int get_current_mode(void)
 #include <linux/vmalloc.h>
 #include <linux/mm.h>
 
+#if defined(CONFIG_MICROUSB_DEBUG)
+	extern char osbl_mUSB_stat[9];
+	extern char lk_mUSB_stat[9];
+#endif
+
 /* for sysfs control (/sys/class/sec/switch/usb_sel) */
 static ssize_t usb_switch_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
@@ -589,6 +594,13 @@ static ssize_t usb_switch_show(struct device *dev, struct device_attribute *attr
 
 	sys_close(fd);
 	set_fs(fs);
+
+#if defined(CONFIG_MICROUSB_DEBUG)
+	if(!power_down)
+	{
+		printk("mUSB osbl=%s lk=%s\n", osbl_mUSB_stat, lk_mUSB_stat);
+	}
+#endif
 
 	if(!power_down)
        	printk("[FSA9480] usb_sel.bin = %s, deb_dev1=0x%x, deb_dev2=0x%x, deb_intr1=0x%x, deb_intr2=0x%x, deb_intb=%d\n",buffer, deb_dev1, deb_dev2, deb_intr1,deb_intr2,deb_intb);

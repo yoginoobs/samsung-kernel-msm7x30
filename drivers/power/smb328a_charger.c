@@ -1013,7 +1013,7 @@ static int __devinit smb328a_probe(struct i2c_client *client,
 	/* create smb328a attributes */
 	smb328a_create_attrs(chip->psy_bat.dev);
 
-	if(board_hw_revision >= 0x06)
+	if(board_hw_revision >= CONFIG_HW_REV_USING_SMB328)
 	{
 		/* Enable batt init */
 		if(p_batt_init != NULL)

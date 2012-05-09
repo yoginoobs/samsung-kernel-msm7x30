@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.35.14
-# Sat May  5 11:15:15 2012
+# Wed May  9 12:24:52 2012
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -283,6 +283,8 @@ CONFIG_MACH_ARIESVE=y
 # CONFIG_MACH_APACHE is not set
 # CONFIG_MACH_ANCORA_TMO is not set
 # CONFIG_MACH_GODART is not set
+# CONFIG_MICROUSB_DEBUG is not set
+# CONFIG_BATT_MICROVOLT_UNIT is not set
 CONFIG_BOARD_REVISION=0x00
 # CONFIG_MACH_MSM7X30_SURF is not set
 # CONFIG_MACH_MSM7X30_FFA is not set

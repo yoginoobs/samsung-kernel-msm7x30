@@ -8631,7 +8631,7 @@ else
 		(smem_get_entry(SMEM_POWER_ON_STATUS_INFO, &smem_size));
 	printk(KERN_NOTICE "Boot Reason = 0x%02x\n", boot_reason);
 #ifdef WLAN_STATIC_BUF
-	//init_wifi_mem();
+	init_wifi_mem();
 #endif
 }
 

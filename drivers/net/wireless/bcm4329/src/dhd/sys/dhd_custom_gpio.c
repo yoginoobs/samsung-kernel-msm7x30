@@ -85,6 +85,9 @@ static int dhd_oob_gpio_num = IRQ_EINT(20);
 #ifdef CONFIG_MACH_U8500
 static int dhd_oob_gpio_num = 216;
 #endif
+#ifdef SYSLSI_SPECIFIC
+static int dhd_oob_gpio_num = MSM_GPIO_TO_INT(111);
+#endif
 
 module_param(dhd_oob_gpio_num, int, 0644);
 MODULE_PARM_DESC(dhd_oob_gpio_num, "DHD oob gpio number");

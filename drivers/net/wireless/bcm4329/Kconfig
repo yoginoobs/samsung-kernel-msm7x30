@@ -1,31 +1,21 @@
-config BCM4329
-	tristate "Broadcom 4329 wireless cards support"
-	depends on MMC
+config BCM4330
+	default m
+	tristate "Broadcom 4330 WLAN Driver"
 	select WIRELESS_EXT
+	select WEXT_CORE
+	select WEXT_PROC
 	select WEXT_PRIV
 	---help---
-	  This module adds support for wireless adapters based on
-	  Broadcom 4329 chipset.
-
-	  This driver uses the kernel's wireless extensions subsystem.
-
-	  If you choose to build a module, it'll be called dhd. Say M if
-	  unsure.
-
-config BCM4329_SAMSUNG
-        depends on BCM4329
-        bool "Support for Samsung boards"
-
-config BCM4329_FW_PATH
-	depends on BCM4329
-	string "Firmware path"
-	default "/system/etc/firmware/fw_bcm4329.bin"
+		Select this option to build Broadcom 4330 WLAN driver
+#config BCM_EMBED_FW
+#	default n
+#	bool "Broadcom Embed FW into WiFi Driver"
+#	depends on BROADCOM_WIFI != n
+#	---help---
+#		Select this option to embed firmware into wlan driver
+config BCM_WIFI_SDIO
+	default n
+	bool "SDIO feature for broadcom wifi driver"
+	depends on BCM4330
 	---help---
-	  Path to the firmware file.
-
-config BCM4329_NVRAM_PATH
-	depends on BCM4329
-	string "NVRAM path"
-	default "/proc/calibration"
-	---help---
-	  Path to the calibration file.
+		Select this option to enable SDIO change for Broadcom wifi driver.

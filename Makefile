@@ -337,8 +337,8 @@ MODFLAGS	= -DMODULE
 CFLAGS_MODULE   = $(MODFLAGS)
 AFLAGS_MODULE   = $(MODFLAGS)
 LDFLAGS_MODULE  = -T $(srctree)/scripts/module-common.lds
-CFLAGS_KERNEL	=
-AFLAGS_KERNEL	=
+CFLAGS_KERNEL	= -mtune=cortex-a8
+AFLAGS_KERNEL	= -mtune=cortex-a8
 CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage
 
 

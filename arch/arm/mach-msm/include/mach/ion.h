@@ -1,4 +1,6 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+/**
+ *
+ * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -8,14 +10,14 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
  */
 
-#ifndef __ADRENO_POSTMORTEM_H
-#define __ADRENO_POSTMORTEM_H
+#ifndef __MACH_ION_H_
+#define __MACH_ION_H_
 
-struct kgsl_device;
+enum ion_memory_types {
+	ION_EBI_TYPE,
+	ION_SMI_TYPE,
+};
 
-int adreno_postmortem_dump(struct kgsl_device *device, int manual);
-
-#endif /* __ADRENO_POSTMORTEM_H */
+#endif

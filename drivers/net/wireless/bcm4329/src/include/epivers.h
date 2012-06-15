@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 1999-2011, Broadcom Corporation
+ * Copyright (C) 1999-2010, Broadcom Corporation
  * 
- *         Unless you and Broadcom execute a separate written software license
+ *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
@@ -19,34 +19,30 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: epivers.h.in,v 13.32.4.1 2010/09/17 00:39:18 Exp $
+ * $Id: epivers.h.in,v 13.25 2005/10/28 18:35:33 Exp $
  *
 */
+
 
 #ifndef _epivers_h_
 #define _epivers_h_
 
-#define	EPI_MAJOR_VERSION	5
+#define	EPI_MAJOR_VERSION	4
 
-#define	EPI_MINOR_VERSION	90
+#define	EPI_MINOR_VERSION	218
 
-#define	EPI_RC_NUMBER		100
+#define	EPI_RC_NUMBER		248
 
-#define	EPI_INCREMENTAL_NUMBER	133
+#define	EPI_INCREMENTAL_NUMBER	181
 
 #define	EPI_BUILD_NUMBER	0
 
-#define	EPI_VERSION		5, 90, 100, 133
+#define	EPI_VERSION		4, 218, 248, 181
 
-#define	EPI_VERSION_NUM		0x055a6406
+#define	EPI_VERSION_NUM		0x04daf8b5
 
-#define EPI_VERSION_DEV		5.90.100
 
-/* Driver Version String, ASCII, 32 chars max */
-#ifdef USE_WIFI_DIRECT
-#define	EPI_VERSION_STR		"5.90.100.133 (WFD)"
-#else
-#define	EPI_VERSION_STR		"5.90.100.133"
-#endif
+#define	EPI_VERSION_STR		"4.218.248.181"
+#define	EPI_ROUTER_VERSION_STR	"4.219.248.181"
 
-#endif /* _epivers_h_ */
+#endif 

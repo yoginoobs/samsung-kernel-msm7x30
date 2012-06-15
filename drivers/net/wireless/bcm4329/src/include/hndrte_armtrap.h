@@ -1,9 +1,9 @@
 /*
  * HNDRTE arm trap handling.
  *
- * Copyright (C) 1999-2011, Broadcom Corporation
+ * Copyright (C) 1999-2010, Broadcom Corporation
  * 
- *         Unless you and Broadcom execute a separate written software license
+ *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: hndrte_armtrap.h,v 13.4.132.1 2011/02/05 00:15:17 Exp $
+ * $Id: hndrte_armtrap.h,v 13.3.196.2 2010/07/15 19:06:11 Exp $
  */
 
 #ifndef	_hndrte_armtrap_h

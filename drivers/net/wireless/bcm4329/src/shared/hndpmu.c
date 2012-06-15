@@ -2,9 +2,9 @@
  * Misc utility routines for accessing PMU corerev specific features
  * of the SiliconBackplane-based Broadcom chips.
  *
- * Copyright (C) 1999-2011, Broadcom Corporation
+ * Copyright (C) 1999-2010, Broadcom Corporation
  * 
- *         Unless you and Broadcom execute a separate written software license
+ *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
@@ -22,7 +22,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: hndpmu.c,v 1.228.2.51.2.3 2011/02/11 22:06:01 Exp $
+ * $Id: hndpmu.c,v 1.95.2.17.4.11.2.63 2010/07/21 13:55:09 Exp $
  */
 
 #include <typedefs.h>
@@ -35,19 +35,13 @@
 #include <sbchipc.h>
 #include <hndpmu.h>
 
+/* debug/trace */
 #define	PMU_ERROR(args)
 
 #define	PMU_MSG(args)
 
-/* To check in verbose debugging messages not intended
- * to be on except on private builds.
- */
-#define	PMU_NONE(args)
 
-
-/* SDIO Pad drive strength to select value mappings.
- * The last strength value in each table must be 0 (the tri-state value).
-		 */
+/* SDIO Pad drive strength to select value mappings */
 typedef struct {
 	uint8 strength;			/* Pad Drive Strength in mA */
 	uint8 sel;			/* Chip-specific select value */
@@ -70,71 +64,6 @@ static const sdiod_drive_str_t sdiod_drive_strength_tab2[] = {
 	{2, 0x1},
 	{0, 0x0} };
 
-/* SDIO Drive Strength to sel value table for PMU Rev 8 (1.8V) */
-static const sdiod_drive_str_t sdiod_drive_strength_tab3[] = {
-	{32, 0x7},
-	{26, 0x6},
-	{22, 0x5},
-	{16, 0x4},
-	{12, 0x3},
-	{8, 0x2},
-	{4, 0x1},
-	{0, 0x0} };
-
-/* SDIO Drive Strength to sel value table for PMU Rev 11 (1.8v) */
-static const sdiod_drive_str_t sdiod_drive_strength_tab4_1v8[] = {
-	{32, 0x6},
-	{26, 0x7},
-	{22, 0x4},
-	{16, 0x5},
-	{12, 0x2},
-	{8, 0x3},
-	{4, 0x0},
-	{0, 0x1} };
-
-/* SDIO Drive Strength to sel value table for PMU Rev 11 (1.2v) */
-static const sdiod_drive_str_t sdiod_drive_strength_tab4_1v2[] = {
-	{16, 0x3},
-	{13, 0x2},
-	{11, 0x1},
-	{8, 0x0},
-	{6, 0x7},
-	{4, 0x6},
-	{2, 0x5},
-	{0, 0x4} };
-
-/* SDIO Drive Strength to sel value table for PMU Rev 11 (2.5v) */
-static const sdiod_drive_str_t sdiod_drive_strength_tab4_2v5[] = {
-	{80, 0x5},
-	{65, 0x4},
-	{55, 0x7},
-	{40, 0x6},
-	{30, 0x1},
-	{20, 0x0},
-	{10, 0x3},
-	{0, 0x2} };
-
-/* SDIO Drive Strength to sel value table for PMU Rev 13 (1.8v) */
-static const sdiod_drive_str_t sdiod_drive_strength_tab5_1v8[] = {
-	{6, 0x7},
-	{5, 0x6},
-	{4, 0x5},
-	{3, 0x4},
-	{2, 0x2},
-	{1, 0x1},
-	{0, 0x0} };
-
-/* SDIO Drive Strength to sel value table for PMU Rev 13 (3.3v) */
-static const sdiod_drive_str_t sdiod_drive_strength_tab5_3v3[] = {
-	{12, 0x7},
-	{10, 0x6},
-	{8, 0x5},
-	{6, 0x4},
-	{4, 0x2},
-	{2, 0x1},
-	{0, 0x0} };
-
-
 #define SDIOD_DRVSTR_KEY(chip, pmu)	(((chip) << 16) | (pmu))
 
 void
@@ -151,7 +80,7 @@ si_sdiod_drive_strength_init(si_t *sih, osl_t *osh, uint32 drivestrength)
 	}
 
 	/* Remember original core before switch to chipc */
-	cc = (chipcregs_t *)si_switch_core(sih, CC_CORE_ID, &origidx, &intr_val);
+	cc = (chipcregs_t *) si_switch_core(sih, CC_CORE_ID, &origidx, &intr_val);
 
 	switch (SDIOD_DRVSTR_KEY(sih->chip, sih->pmurev)) {
 	case SDIOD_DRVSTR_KEY(BCM4325_CHIP_ID, 1):
@@ -166,57 +95,37 @@ si_sdiod_drive_strength_init(si_t *sih, osl_t *osh, uint32 drivestrength)
 		str_mask = 0x00003800;
 		str_shift = 11;
 		break;
-	case SDIOD_DRVSTR_KEY(BCM4336_CHIP_ID, 8):
-	case SDIOD_DRVSTR_KEY(BCM4336_CHIP_ID, 11):
-		if (sih->pmurev == 8) {
-			str_tab = (sdiod_drive_str_t *)&sdiod_drive_strength_tab3;
-		}
-		else if (sih->pmurev == 11) {
-			str_tab = (sdiod_drive_str_t *)&sdiod_drive_strength_tab4_1v8;
-		}
-		str_mask = 0x00003800;
-		str_shift = 11;
-		break;
-	case SDIOD_DRVSTR_KEY(BCM4330_CHIP_ID, 12):
-		str_tab = (sdiod_drive_str_t *)&sdiod_drive_strength_tab4_1v8;
-		str_mask = 0x00003800;
-		str_shift = 11;
-		break;
-	case SDIOD_DRVSTR_KEY(BCM43362_CHIP_ID, 13):
-		str_tab = (sdiod_drive_str_t *)&sdiod_drive_strength_tab5_1v8;
-		str_mask = 0x00003800;
-		str_shift = 11;
-		break;
+
 	default:
-		PMU_MSG(("No SDIO Drive strength init done for chip %s rev %d pmurev %d\n",
-		         bcm_chipname(sih->chip, chn, 8), sih->chiprev, sih->pmurev));
+		PMU_MSG(("No SDIO Drive strength init done for chip %x rev %d pmurev %d\n",
+		         sih->chip, sih->chiprev, sih->pmurev));
 
 		break;
 	}
 
 	if (str_tab != NULL) {
+		uint32 drivestrength_sel = 0;
 		uint32 cc_data_temp;
 		int i;
 
-		/* Pick the lowest available drive strength equal or greater than the
-		 * requested strength.	Drive strength of 0 requests tri-state.
- */
-		for (i = 0; drivestrength < str_tab[i].strength; i++)
-			;
-
-		if (i > 0 && drivestrength > str_tab[i].strength)
-			i--;
+		for (i = 0; str_tab[i].strength != 0; i ++) {
+			if (drivestrength >= str_tab[i].strength) {
+				drivestrength_sel = str_tab[i].sel;
+				break;
+			}
+		}
 
 		W_REG(osh, &cc->chipcontrol_addr, 1);
 		cc_data_temp = R_REG(osh, &cc->chipcontrol_data);
 		cc_data_temp &= ~str_mask;
-		cc_data_temp |= str_tab[i].sel << str_shift;
+		drivestrength_sel <<= str_shift;
+		cc_data_temp |= drivestrength_sel;
 		W_REG(osh, &cc->chipcontrol_data, cc_data_temp);
 
-		PMU_MSG(("SDIO: %dmA drive strength requested; set to %dmA\n",
-		         drivestrength, str_tab[i].strength));
-}
+		PMU_MSG(("SDIO: %dmA drive strength selected, set to 0x%08x\n",
+		         drivestrength, cc_data_temp));
+	}
 
 	/* Return to original core */
 	si_restore_core(sih, origidx, intr_val);
-	}
+}

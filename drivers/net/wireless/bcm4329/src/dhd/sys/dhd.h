@@ -4,9 +4,9 @@
  * Provides type definitions and function prototypes used to link the
  * DHD OS, bus, and protocol modules.
  *
- * Copyright (C) 1999-2011, Broadcom Corporation
+ * Copyright (C) 1999-2010, Broadcom Corporation
  * 
- *         Unless you and Broadcom execute a separate written software license
+ *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
@@ -24,7 +24,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd.h,v 1.60.4.17 2011/01/09 08:11:56 Exp $
+ * $Id: dhd.h,v 1.32.4.7.2.4.14.49.4.7 2010/11/12 22:48:36 Exp $
  */
 
 /****************
@@ -34,6 +34,10 @@
 #ifndef _dhd_h_
 #define _dhd_h_
 
+#if defined(LINUX)
+#if defined(CHROMIUMOS_COMPAT_WIRELESS)
+#include <linux/sched.h>
+#endif
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/slab.h>
@@ -48,22 +52,23 @@
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined(CONFIG_HAS_WAKELOCK)
 #include <linux/wakelock.h>
 #endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined (CONFIG_HAS_WAKELOCK) */
-
 /* The kernel threading is sdio-specific */
+#else /* LINUX */
+#define ENOMEM		1
+#define EFAULT      2
+#define EINVAL		3
+#define EIO			4
+#define ETIMEDOUT	5
+#define ERESTARTSYS 6
+#endif /* LINUX */
 
 #include <wlioctl.h>
+
 
 /* Forward decls */
 struct dhd_bus;
 struct dhd_prot;
 struct dhd_info;
-struct dhd_cmn;
-#if defined(WLBTAMP_HIGH_ONLY)
-struct bta_info;
-#endif
-
-/* max sequential txcntl or rxcntl timeouts to set HANG event */
-#define MAX_CNTL_TIMEOUT  2
 
 /* The level of bus communication with the dongle */
 enum dhd_bus_state {
@@ -85,6 +90,7 @@ enum dhd_bus_wake_state {
 	WAKE_LOCK_SOFTAP_SET,
 	WAKE_LOCK_SOFTAP_STOP,
 	WAKE_LOCK_SOFTAP_START,
+	WAKE_LOCK_SOFTAP_THREAD,
 	WAKE_LOCK_MAX
 };
 enum dhd_prealloc_index {
@@ -103,7 +109,6 @@ typedef struct dhd_pub {
 	struct dhd_bus *bus;	/* Bus module handle */
 	struct dhd_prot *prot;	/* Protocol module handle */
 	struct dhd_info  *info; /* Info module handle */
-	struct dhd_cmn	*cmn;	/* dhd_common module handle */
 
 	/* Internal dhd items */
 	bool up;		/* Driver up/down (to OS) */
@@ -147,7 +152,7 @@ typedef struct dhd_pub {
 	/* Last error from dongle */
 	int dongle_error;
 
-	/* Suspend disable flag and "in suspend" flag */
+	/* Suspend disable flag  flag */
 	int suspend_disable_flag; /* "1" to disable all extra powersaving during suspend */
 	int in_suspend;			/* flag set to 1 when early suspend called */
 #ifdef PNO_SUPPORT
@@ -168,100 +173,47 @@ typedef struct dhd_pub {
 	uint8 country_code[WLC_CNTRY_BUF_SZ];
 	char eventmask[WL_EVENTING_MASK_LEN];
 
-#ifdef WLBTAMP
-#if defined(WLBTAMP_HIGH_ONLY)
-	struct bta_info *bta;
-#endif
-	uint16	maxdatablks;
-#endif /* WLBTAMP */
-
-	bool	dongle_isolation;
-	bool	dongle_trap_occured;
-	int	hang_was_sent;
-	int	rxcnt_timeout;		/* counter rxcnt timeout to send HANG */
-	int	txcnt_timeout;		/* counter txcnt timeout to send HANG */
-
-#ifdef WLMEDIA_HTSF
-	uint8 htsfdlystat_sz; /* Size of delay stats, max 255B */
-#endif
-
-#if defined(CONFIG_HAS_WAKELOCK) && (defined(CONFIG_MACH_SAMSUNG_P3) || defined(CONFIG_MACH_N1))
-	struct wake_lock	wow_wakelock;
-#endif
-	bool netdev_registered;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined(CONFIG_HAS_WAKELOCK)
+	struct wake_lock 	wakelock[WAKE_LOCK_MAX];
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined (CONFIG_HAS_WAKELOCK) */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)) && 1
+	struct mutex 	wl_start_stop_lock; /* lock/unlock for Android start/stop */
+	struct mutex 	wl_softap_lock;		 /* lock/unlock for any SoftAP/STA settings */
+#endif 
 } dhd_pub_t;
 
-typedef struct dhd_cmn {
-	osl_t *osh;		/* OSL handle */
-	dhd_pub_t *dhd;
-} dhd_cmn_t;
 
+	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined(CONFIG_PM_SLEEP)
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined(CONFIG_PM_SLEEP)
-
-#define DHD_PM_RESUME_WAIT_INIT(a) DECLARE_WAIT_QUEUE_HEAD(a);
-
-#if defined(CONFIG_MACH_SAMSUNG_P3) || defined(CONFIG_MACH_N1)
-/* increase wait time because we've seen WiFi sometimes time out if
- * something causes system resume to take longer (maybe another Samsung
- * driver doing something more in it's resume function than it should),
- * and that causes the rest of the WiFi driver to get into a bad state
- * and wind up spinning taking all the CPU time.  Now we have about a
- * 10ms delay * 1000 retries, or 10 seconds.
- */
-#define _DHD_PM_RESUME_WAIT(a, b) do {\
-	int retry = 0; \
-	while (dhd_mmc_suspend && retry++ != b) { \
-		smp_mb();					   \
-		wait_event_interruptible_timeout(a, FALSE, msecs_to_jiffies(10)); \
-	} \
-} 	while (0)
-#define DHD_PM_RESUME_WAIT(a) 			_DHD_PM_RESUME_WAIT(a, 1000)
-#else
-#define _DHD_PM_RESUME_WAIT(a, b) do {\
-	int retry = 0; \
+	#define DHD_PM_RESUME_WAIT_INIT(a) DECLARE_WAIT_QUEUE_HEAD(a);
+	#define _DHD_PM_RESUME_WAIT(a, b) do {\
+			int retry = 0; \
 			smp_mb(); \
-	while (dhd_mmc_suspend && retry++ != b) { \
-		wait_event_interruptible_timeout(a, FALSE, HZ/100); \
-	} \
-} 	while (0)
-#define DHD_PM_RESUME_WAIT(a) 			_DHD_PM_RESUME_WAIT(a, 500)
-#endif /* CONFIG_MACH_SAMSUNG_P3 || CONFIG_MACH_N1 */
-
-#define DHD_PM_RESUME_WAIT_FOREVER(a) 	_DHD_PM_RESUME_WAIT(a, ~0)
-
-#if defined(CONFIG_MACH_SAMSUNG_P3) || defined(CONFIG_MACH_N1)
-
-#define DHD_PM_RESUME_RETURN_ERROR(a)	do { \
-	if (dhd_mmc_suspend) { \
-		pr_err("%s: suspend timeout\n", __func__);\
-		return a; \
-	} \
-} while (0)
-
-#else
-
-#define DHD_PM_RESUME_RETURN_ERROR(a)	do { if (dhd_mmc_suspend) return a; } while (0)
-
-#endif
-#define DHD_PM_RESUME_RETURN		do { if (dhd_mmc_suspend) return; } while (0)
+			while (dhd_mmc_suspend && retry++ != b) { \
+				wait_event_timeout(a, FALSE, HZ/100); \
+			} \
+		} 	while (0)
+	#define DHD_PM_RESUME_WAIT(a) 			_DHD_PM_RESUME_WAIT(a, 500)
+	#define DHD_PM_RESUME_WAIT_FOREVER(a) 	_DHD_PM_RESUME_WAIT(a, ~0)
+	#define DHD_PM_RESUME_RETURN_ERROR(a)	do { if (dhd_mmc_suspend) return a; } while (0)
+	#define DHD_PM_RESUME_RETURN		do { if (dhd_mmc_suspend) return; } while (0)
 
 	#define DHD_SPINWAIT_SLEEP_INIT(a) DECLARE_WAIT_QUEUE_HEAD(a);
 	#define SPINWAIT_SLEEP(a, exp, us) do { \
 		uint countdown = (us) + 9999; \
 		while ((exp) && (countdown >= 10000)) { \
-			wait_event_interruptible_timeout(a, FALSE, HZ/100); \
+			wait_event_timeout(a, FALSE, HZ/100); \
 			countdown -= 10000; \
 		} \
 	} while (0)
 
-#else
+	#else
 
-#define DHD_PM_RESUME_WAIT_INIT(a)
-#define DHD_PM_RESUME_WAIT(a)
-#define DHD_PM_RESUME_WAIT_FOREVER(a)
-#define DHD_PM_RESUME_RETURN_ERROR(a)
-#define DHD_PM_RESUME_RETURN
+	#define DHD_PM_RESUME_WAIT_INIT(a)
+	#define DHD_PM_RESUME_WAIT(a)
+	#define DHD_PM_RESUME_WAIT_FOREVER(a)
+	#define DHD_PM_RESUME_RETURN_ERROR(a)
+	#define DHD_PM_RESUME_RETURN
 
 	#define DHD_SPINWAIT_SLEEP_INIT(a)
 	#define SPINWAIT_SLEEP(a, exp, us)  do { \
@@ -272,26 +224,96 @@ typedef struct dhd_cmn {
 		} \
 	} while (0)
 
-#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined(CONFIG_PM_SLEEP) */
-#ifndef DHDTHREAD
-#undef	SPINWAIT_SLEEP
-#define SPINWAIT_SLEEP(a, exp, us) SPINWAIT(exp, us)
-#endif /* DHDTHREAD */
+	#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined(CONFIG_PM_SLEEP) */
 #define DHD_IF_VIF	0x01	/* Virtual IF (Hidden from user) */
 
-unsigned long dhd_os_spin_lock(dhd_pub_t *pub);
-void dhd_os_spin_unlock(dhd_pub_t *pub, unsigned long flags);
+inline static void MUTEX_LOCK_INIT(dhd_pub_t * dhdp)
+{
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)) && 1
+	mutex_init(&dhdp->wl_start_stop_lock);
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) */
+}
 
-/*  Wakelock Functions */
-extern int dhd_os_wake_lock(dhd_pub_t *pub);
-extern int dhd_os_wake_unlock(dhd_pub_t *pub);
-extern int dhd_os_wake_lock_timeout(dhd_pub_t *pub);
-extern int dhd_os_wake_lock_timeout_enable(dhd_pub_t *pub);
+inline static void MUTEX_LOCK_SOFTAP_SET_INIT(dhd_pub_t * dhdp)
+{
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)) && 1
+	mutex_init(&dhdp->wl_softap_lock);
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) */
+}
 
-#define DHD_OS_WAKE_LOCK(pub) 			dhd_os_wake_lock(pub)
-#define DHD_OS_WAKE_UNLOCK(pub) 		dhd_os_wake_unlock(pub)
-#define DHD_OS_WAKE_LOCK_TIMEOUT(pub)		dhd_os_wake_lock_timeout(pub)
-#define DHD_OS_WAKE_LOCK_TIMEOUT_ENABLE(pub)	dhd_os_wake_lock_timeout_enable(pub)
+inline static void MUTEX_LOCK_SOFTAP_SET(dhd_pub_t * dhdp)
+{
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)) && 1
+	mutex_lock(&dhdp->wl_softap_lock);
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) */
+}
+
+inline static void MUTEX_UNLOCK_SOFTAP_SET(dhd_pub_t * dhdp)
+{
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)) && 1
+	mutex_unlock(&dhdp->wl_softap_lock);
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) */
+}
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)) && 1
+extern struct mutex  g_wl_ss_scan_lock;		 /* lock/unlock for Scan/Cache settings */
+#endif 
+
+inline static void MUTEX_LOCK_WL_SCAN_SET_INIT(void)
+{
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)) && 1
+	mutex_init(&g_wl_ss_scan_lock);
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) */
+}
+
+inline static void MUTEX_LOCK_WL_SCAN_SET(void)
+{
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)) && 1
+	mutex_lock(&g_wl_ss_scan_lock);
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) */
+}
+
+inline static void MUTEX_UNLOCK_WL_SCAN_SET(void)
+{
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)) && 1
+	mutex_unlock(&g_wl_ss_scan_lock);
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) */
+}
+
+inline static void WAKE_LOCK_INIT(dhd_pub_t * dhdp, int index, char * y)
+{
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined(CONFIG_HAS_WAKELOCK)
+	wake_lock_init(&dhdp->wakelock[index], WAKE_LOCK_SUSPEND, y);
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined (CONFIG_HAS_WAKELOCK) */
+}
+
+inline static void WAKE_LOCK(dhd_pub_t * dhdp, int index)
+{
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined(CONFIG_HAS_WAKELOCK)
+	wake_lock(&dhdp->wakelock[index]);
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined (CONFIG_HAS_WAKELOCK) */
+}
+
+inline static void WAKE_UNLOCK(dhd_pub_t * dhdp, int index)
+{
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined(CONFIG_HAS_WAKELOCK)
+	wake_unlock(&dhdp->wakelock[index]);
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined (CONFIG_HAS_WAKELOCK) */
+}
+
+inline static void WAKE_LOCK_TIMEOUT(dhd_pub_t * dhdp, int index, long time)
+{
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined(CONFIG_HAS_WAKELOCK)
+	wake_lock_timeout(&dhdp->wakelock[index], time);
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined (CONFIG_HAS_WAKELOCK) */
+}
+
+inline static void WAKE_LOCK_DESTROY(dhd_pub_t * dhdp, int index)
+{
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined(CONFIG_HAS_WAKELOCK)
+	wake_lock_destroy(&dhdp->wakelock[index]);
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined (CONFIG_HAS_WAKELOCK) */
+}
 
 
 typedef struct dhd_if_event {
@@ -299,29 +321,14 @@ typedef struct dhd_if_event {
 	uint8 action;
 	uint8 flags;
 	uint8 bssidx;
-	uint8 is_AP;
 } dhd_if_event_t;
 
-typedef enum dhd_attach_states
-{
-	DHD_ATTACH_STATE_INIT = 0x0,
-	DHD_ATTACH_STATE_NET_ALLOC = 0x1,
-	DHD_ATTACH_STATE_DHD_ALLOC = 0x2,
-	DHD_ATTACH_STATE_ADD_IF = 0x4,
-	DHD_ATTACH_STATE_PROT_ATTACH = 0x8,
-	DHD_ATTACH_STATE_WL_ATTACH = 0x10,
-	DHD_ATTACH_STATE_THREADS_CREATED = 0x20,
-	DHD_ATTACH_STATE_WAKELOCKS_INIT = 0x40,
-	DHD_ATTACH_STATE_CFG80211 = 0x80,
-	DHD_ATTACH_STATE_EARLYSUSPEND_DONE = 0x100,
-	DHD_ATTACH_STATE_DONE = 0x200
-} dhd_attach_states_t;
-
-/* Value -1 means we are unsuccessful in creating the kthread. */
-#define DHD_PID_KT_INVALID 	-1
-/* Value -2 means we are unsuccessful in both creating the kthread and tasklet */
-#define DHD_PID_KT_TL_INVALID	-2
-
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)) && 1
+extern void dhd_os_start_lock(dhd_pub_t *pub);
+extern void dhd_os_start_unlock(dhd_pub_t *pub);
+#endif 
+extern unsigned long dhd_os_spin_lock(dhd_pub_t *pub);
+extern void dhd_os_spin_unlock(dhd_pub_t *pub, unsigned long flags);
 /*
  * Exported from dhd OS modules (dhd_linux/dhd_ndis)
  */
@@ -340,12 +347,12 @@ extern int dhd_net_attach(dhd_pub_t *dhdp, int idx);
 
 /* Indication from bus module regarding removal/absence of dongle */
 extern void dhd_detach(dhd_pub_t *dhdp);
-extern void dhd_free(dhd_pub_t *dhdp);
 
 /* Indication from bus module to change flow-control state */
 extern void dhd_txflowcontrol(dhd_pub_t *dhdp, int ifidx, bool on);
 
 extern bool dhd_prec_enq(dhd_pub_t *dhdp, struct pktq *q, void *pkt, int prec);
+
 /* Receive frame for delivery to OS.  Callee disposes of rxp. */
 extern void dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *rxp, int numpkt);
 
@@ -357,6 +364,9 @@ extern void dhd_sched_dpc(dhd_pub_t *dhdp);
 
 /* Notify tx completion */
 extern void dhd_txcomplete(dhd_pub_t *dhdp, void *txp, bool success);
+
+/* Query ioctl */
+extern int  dhdcdc_query_ioctl(dhd_pub_t *dhd, int ifidx, uint cmd, void *buf, uint len);
 
 /* OS independent layer functions */
 extern int dhd_os_proto_block(dhd_pub_t * pub);
@@ -380,9 +390,8 @@ extern void dhd_customer_gpio_wlan_ctrl(int onoff);
 extern void dhd_os_sdunlock_sndup_rxq(dhd_pub_t * pub);
 extern void dhd_os_sdlock_eventq(dhd_pub_t * pub);
 extern void dhd_os_sdunlock_eventq(dhd_pub_t * pub);
-extern bool dhd_os_check_hang(dhd_pub_t *dhdp, int ifidx, int ret);
 #ifdef DHD_DEBUG
-extern int write_to_file(uint8 *buf, int size, const char *);
+extern int write_to_file(dhd_pub_t *dhd, uint8 *buf, int size);
 #endif /* DHD_DEBUG */
 #if defined(OOB_INTR_ONLY)
 extern int dhd_customer_oob_irq_map(unsigned long *irq_flags_ptr);
@@ -390,11 +399,7 @@ extern int dhd_customer_oob_irq_map(unsigned long *irq_flags_ptr);
 extern void dhd_os_sdtxlock(dhd_pub_t * pub);
 extern void dhd_os_sdtxunlock(dhd_pub_t * pub);
 
-#if defined(DHDTHREAD)
-struct task_struct;
-struct sched_param;
 int setScheduler(struct task_struct *p, int policy, struct sched_param *param);
-#endif /* DHDTHREAD && DHD_GPL */
 
 typedef struct {
 	uint32 limit;		/* Expiration time (usec) */
@@ -407,17 +412,12 @@ extern void dhd_timeout_start(dhd_timeout_t *tmo, uint usec);
 extern int dhd_timeout_expired(dhd_timeout_t *tmo);
 
 extern int dhd_ifname2idx(struct dhd_info *dhd, char *name);
-extern struct net_device * dhd_idx2net(void *pub, int ifidx);
-extern int wl_host_event(dhd_pub_t *dhd_pub, int *idx, void *pktdata,
+extern uint8 *dhd_bssidx2bssid(dhd_pub_t *dhd, int idx);
+extern int wl_host_event(struct dhd_info *dhd, int *idx, void *pktdata,
                          wl_event_msg_t *, void **data_ptr);
 extern void wl_event_to_host_order(wl_event_msg_t * evt);
 
-extern int dhd_wl_ioctl(dhd_pub_t *dhd_pub, int ifindex, wl_ioctl_t *ioc, void *buf, int len);
-extern int dhd_wl_ioctl_cmd(dhd_pub_t *dhd_pub, int cmd, void *arg, int len, uint8 set,
-                            int ifindex);
-
-extern struct dhd_cmn *dhd_common_init(osl_t *osh);
-extern void dhd_common_deinit(dhd_pub_t *dhd_pub);
+extern void dhd_common_init(void);
 
 extern int dhd_add_if(struct dhd_info *dhd, int ifidx, void *handle,
 	char *name, uint8 *mac_addr, uint32 flags, uint8 bssidx);
@@ -433,15 +433,13 @@ extern void dhd_vif_sendup(struct dhd_info *dhd, int ifidx, uchar *cp, int len);
 /* Send packet to dongle via data channel */
 extern int dhd_sendpkt(dhd_pub_t *dhdp, int ifidx, void *pkt);
 
-/* send up locally generated event */
-extern void dhd_sendup_event_common(dhd_pub_t *dhdp, wl_event_msg_t *event, void *data);
 /* Send event to host */
 extern void dhd_sendup_event(dhd_pub_t *dhdp, wl_event_msg_t *event, void *data);
 extern int dhd_bus_devreset(dhd_pub_t *dhdp, uint8 flag);
 extern uint dhd_bus_status(dhd_pub_t *dhdp);
 extern int  dhd_bus_start(dhd_pub_t *dhdp);
-extern int dhd_bus_membytes(dhd_pub_t *dhdp, bool set, uint32 address, uint8 *data, uint size);
-extern void dhd_print_buf(void *pbuf, int len, int bytes_per_line);
+
+extern void print_buf(void *pbuf, int len, int bytes_per_line);
 
 
 typedef enum cust_gpio_modes {
@@ -450,9 +448,9 @@ typedef enum cust_gpio_modes {
 	WLAN_POWER_ON,
 	WLAN_POWER_OFF
 } cust_gpio_modes_t;
-
 extern int wl_iw_iscan_set_scan_broadcast_prep(struct net_device *dev, uint flag);
 extern int wl_iw_send_priv_event(struct net_device *dev, char *flag);
+extern int net_os_send_hang_message(struct net_device *dev);
 /*
  * Insmod parameters for debug/test
  */
@@ -463,7 +461,6 @@ extern uint dhd_watchdog_ms;
 #if defined(DHD_DEBUG)
 /* Console output poll interval */
 extern uint dhd_console_ms;
-extern uint wl_msg_level;
 #endif /* defined(DHD_DEBUG) */
 
 /* Use interrupts */
@@ -488,7 +485,7 @@ extern uint dhd_pkt_filter_init;
 extern uint dhd_master_mode;
 
 /* Roaming mode control */
-extern uint dhd_roam_disable;
+extern uint dhd_roam;
 
 /* Roaming mode control */
 extern uint dhd_radio_up;
@@ -527,13 +524,4 @@ extern char nv_path[MOD_PARAM_PATHLEN];
 extern void dhd_wait_for_event(dhd_pub_t *dhd, bool *lockvar);
 extern void dhd_wait_event_wakeup(dhd_pub_t*dhd);
 
-#ifdef ARP_OFFLOAD_SUPPORT
-void dhd_aoe_hostip_clr(dhd_pub_t *dhd);
-void dhd_aoe_arp_clr(dhd_pub_t *dhd);
-void dhd_arp_offload_add_ip(dhd_pub_t *dhd, uint32 ipaddr);
-#endif /* ARP_OFFLOAD_SUPPORT */
-
-#ifdef CHECK_CHIP_REV
-extern uint8 g_chipver;
-#endif
 #endif /* _dhd_h_ */

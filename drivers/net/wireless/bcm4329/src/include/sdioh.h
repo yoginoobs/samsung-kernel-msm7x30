@@ -2,9 +2,9 @@
  * SDIO Host Controller Spec header file
  * Register map and definitions for the Standard Host Controller
  *
- * Copyright (C) 1999-2011, Broadcom Corporation
+ * Copyright (C) 1999-2010, Broadcom Corporation
  * 
- *         Unless you and Broadcom execute a separate written software license
+ *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
@@ -22,7 +22,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: sdioh.h,v 13.17.2.3 2011/01/08 05:28:21 Exp $
+ * $Id: sdioh.h,v 13.13.18.1.16.3 2009/12/08 22:34:21 Exp $
  */
 
 #ifndef	_SDIOH_H
@@ -64,7 +64,6 @@
 #define SD_Capabilities_Reserved	0x044
 #define SD_MaxCurCap			0x048
 #define SD_MaxCurCap_Reserved		0x04C
-#define SD_ADMA_ErrStatus		0x054
 #define SD_ADMA_SysAddr			0x58
 #define SD_SlotInterruptStatus		0x0FC
 #define SD_HostControllerVersion 	0x0FE
@@ -72,52 +71,13 @@
 /* SD specific registers in PCI config space */
 #define SD_SlotInfo	0x40
 
-/* #ifdef SDHOST3 */
-
-#define SD_Capabilities3		0x044
-
-/* HC 3.0 specific registers and offsets */
-#define SD3_HostCntrl2			0x03E
-/* preset regsstart and count */
-#define SD3_PresetValStart		0x060
-#define SD3_PresetValCount		8
-/* preset-indiv regs */
-#define SD3_PresetVal_init		0x060
-#define SD3_PresetVal_default	0x062
-#define SD3_PresetVal_HS		0x064
-#define SD3_PresetVal_SDR12		0x066
-#define SD3_PresetVal_SDR25		0x068
-#define SD3_PresetVal_SDR50		0x06a
-#define SD3_PresetVal_SDR104	0x06c
-#define SD3_PresetVal_DDR50		0x06e
-
-/* preset value indices */
-#define SD3_PRESETVAL_INITIAL_IX	0
-#define SD3_PRESETVAL_DESPEED_IX	1
-#define SD3_PRESETVAL_HISPEED_IX	2
-#define SD3_PRESETVAL_SDR12_IX		3
-#define SD3_PRESETVAL_SDR25_IX		4
-#define SD3_PRESETVAL_SDR50_IX		5
-#define SD3_PRESETVAL_SDR104_IX		6
-#define SD3_PRESETVAL_DDR50_IX		7
-
-/* #endif SDHOST3 */
-
 /* SD_Capabilities reg (0x040) */
 #define CAP_TO_CLKFREQ_M 	BITFIELD_MASK(6)
 #define CAP_TO_CLKFREQ_S 	0
 #define CAP_TO_CLKUNIT_M  	BITFIELD_MASK(1)
 #define CAP_TO_CLKUNIT_S 	7
-/* #ifndef SDHOST3 */
-/* #define CAP_BASECLK_M 		BITFIELD_MASK(6) */
-/* #define CAP_BASECLK_S 		8 */
-/* #else */
-/* Note: for sdio-2.0 case, this mask has to be 6 bits, but msb 2
-	bits are reserved. going ahead with 8 bits, as it is req for 3.0
-*/
-#define CAP_BASECLK_M 		BITFIELD_MASK(8)
+#define CAP_BASECLK_M 		BITFIELD_MASK(6)
 #define CAP_BASECLK_S 		8
-/* #endif SDHOST3 */
 #define CAP_MAXBLOCK_M 		BITFIELD_MASK(2)
 #define CAP_MAXBLOCK_S		16
 #define CAP_ADMA2_M		BITFIELD_MASK(1)
@@ -138,61 +98,6 @@
 #define CAP_VOLT_1_8_S		26
 #define CAP_64BIT_HOST_M	BITFIELD_MASK(1)
 #define CAP_64BIT_HOST_S	28
-
-/* #ifdef SDHOST3 */
-
-#define CAP_ASYNCINT_SUP_M	BITFIELD_MASK(1)
-#define CAP_ASYNCINT_SUP_S	29
-
-#define CAP_SLOTTYPE_M		BITFIELD_MASK(2)
-#define CAP_SLOTTYPE_S		30
-
-#define CAP3_MSBits_OFFSET	(32)
-/* note: following are caps MSB32 bits.
-	So the bits start from 0, instead of 32. that is why
-	CAP3_MSBits_OFFSET is subtracted.
-*/
-#define CAP3_SDR50_SUP_M		BITFIELD_MASK(1)
-#define CAP3_SDR50_SUP_S		(32 - CAP3_MSBits_OFFSET)
-
-#define CAP3_SDR104_SUP_M	BITFIELD_MASK(1)
-#define CAP3_SDR104_SUP_S	(33 - CAP3_MSBits_OFFSET)
-
-#define CAP3_DDR50_SUP_M	BITFIELD_MASK(1)
-#define CAP3_DDR50_SUP_S	(34 - CAP3_MSBits_OFFSET)
-
-/* for knowing the clk caps in a single read */
-#define CAP3_30CLKCAP_M		BITFIELD_MASK(3)
-#define CAP3_30CLKCAP_S		(32 - CAP3_MSBits_OFFSET)
-
-#define CAP3_DRIVTYPE_A_M	BITFIELD_MASK(1)
-#define CAP3_DRIVTYPE_A_S	(36 - CAP3_MSBits_OFFSET)
-
-#define CAP3_DRIVTYPE_C_M	BITFIELD_MASK(1)
-#define CAP3_DRIVTYPE_C_S	(37 - CAP3_MSBits_OFFSET)
-
-#define CAP3_DRIVTYPE_D_M	BITFIELD_MASK(1)
-#define CAP3_DRIVTYPE_D_S	(38 - CAP3_MSBits_OFFSET)
-
-#define CAP3_RETUNING_TC_M	BITFIELD_MASK(4)
-#define CAP3_RETUNING_TC_S	(40 - CAP3_MSBits_OFFSET)
-
-#define CAP3_TUNING_SDR50_M	BITFIELD_MASK(1)
-#define CAP3_TUNING_SDR50_S	(45 - CAP3_MSBits_OFFSET)
-
-#define CAP3_RETUNING_MODES_M	BITFIELD_MASK(2)
-#define CAP3_RETUNING_MODES_S	(46 - CAP3_MSBits_OFFSET)
-
-#define CAP3_CLK_MULT_M		BITFIELD_MASK(8)
-#define CAP3_CLK_MULT_S		(48 - CAP3_MSBits_OFFSET)
-
-#define PRESET_DRIVR_SELECT_M	BITFIELD_MASK(2)
-#define PRESET_DRIVR_SELECT_S	14
-
-#define PRESET_CLK_DIV_M	BITFIELD_MASK(10)
-#define PRESET_CLK_DIV_S	0
-
-/* #endif SDHOST3 */
 
 /* SD_MaxCurCap reg (0x048) */
 #define CAP_CURR_3_3_M		BITFIELD_MASK(8)
@@ -293,33 +198,6 @@
 #define HOST_DMA_SEL_M		BITFIELD_MASK(2)	/* Bit 4:3	DMA Select */
 #define HOST_HI_SPEED_EN_S	2
 
-/* #ifdef SDHOST3 */
-/* Host Control2: */
-#define HOSTCtrl2_PRESVAL_EN_M	BITFIELD_MASK(1)	/* 1 bit */
-#define HOSTCtrl2_PRESVAL_EN_S	15					/* bit# */
-
-#define HOSTCtrl2_ASYINT_EN_M	BITFIELD_MASK(1)	/* 1 bit */
-#define HOSTCtrl2_ASYINT_EN_S	14					/* bit# */
-
-#define HOSTCtrl2_SAMPCLK_SEL_M	BITFIELD_MASK(1)	/* 1 bit */
-#define HOSTCtrl2_SAMPCLK_SEL_S	7					/* bit# */
-
-#define HOSTCtrl2_EXEC_TUNING_M	BITFIELD_MASK(1)	/* 1 bit */
-#define HOSTCtrl2_EXEC_TUNING_S	6					/* bit# */
-
-#define HOSTCtrl2_DRIVSTRENGTH_SEL_M	BITFIELD_MASK(2)	/* 2 bit */
-#define HOSTCtrl2_DRIVSTRENGTH_SEL_S	4					/* bit# */
-
-#define HOSTCtrl2_1_8SIG_EN_M	BITFIELD_MASK(1)	/* 1 bit */
-#define HOSTCtrl2_1_8SIG_EN_S	3					/* bit# */
-
-#define HOSTCtrl2_UHSMODE_SEL_M	BITFIELD_MASK(3)	/* 3 bit */
-#define HOSTCtrl2_UHSMODE_SEL_S	0					/* bit# */
-
-/* #endif SDHOST3 */
-
-#define HOST_CONTR_VER_3		(2)
-
 /* misc defines */
 #define SD1_MODE 		0x1	/* SD Host Cntrlr Spec */
 #define SD4_MODE 		0x2	/* SD Host Cntrlr Spec */
@@ -361,12 +239,6 @@
 #define INTSTAT_ERROR_INT_M		BITFIELD_MASK(1)	/* Bit 15 */
 #define INTSTAT_ERROR_INT_S		15
 
-
-/* #ifdef SDHOST3 */
-#define INTSTAT_RETUNING_INT_M		BITFIELD_MASK(1)	/* Bit 12 */
-#define INTSTAT_RETUNING_INT_S		12
-/* #endif SDHOST3 */
-
 /* SD_ErrorIntrStatus: Offset 0x032, size = 2 bytes */
 /* Defs also serve SD_ErrorIntrStatusEnable and SD_ErrorIntrSignalEnable */
 #define ERRINT_CMD_TIMEOUT_M		BITFIELD_MASK(1)
@@ -389,8 +261,6 @@
 #define ERRINT_AUTO_CMD12_S		8
 #define ERRINT_VENDOR_M			BITFIELD_MASK(4)
 #define ERRINT_VENDOR_S			12
-#define ERRINT_ADMA_M			BITFIELD_MASK(1)
-#define ERRINT_ADMA_S			9
 
 /* Also provide definitions in "normal" form to allow combined masks */
 #define ERRINT_CMD_TIMEOUT_BIT		0x0001
@@ -402,13 +272,12 @@
 #define ERRINT_DATA_ENDBIT_BIT		0x0040
 #define ERRINT_CURRENT_LIMIT_BIT	0x0080
 #define ERRINT_AUTO_CMD12_BIT		0x0100
-#define ERRINT_ADMA_BIT		0x0200
 
 /* Masks to select CMD vs. DATA errors */
 #define ERRINT_CMD_ERRS		(ERRINT_CMD_TIMEOUT_BIT | ERRINT_CMD_CRC_BIT |\
 				 ERRINT_CMD_ENDBIT_BIT | ERRINT_CMD_INDEX_BIT)
 #define ERRINT_DATA_ERRS	(ERRINT_DATA_TIMEOUT_BIT | ERRINT_DATA_CRC_BIT |\
-				 ERRINT_DATA_ENDBIT_BIT | ERRINT_ADMA_BIT)
+				 ERRINT_DATA_ENDBIT_BIT)
 #define ERRINT_TRANSFER_ERRS	(ERRINT_CMD_ERRS | ERRINT_DATA_ERRS)
 
 /* SD_WakeupCntr_BlockGapCntrl : Offset 0x02A , size = bytes */

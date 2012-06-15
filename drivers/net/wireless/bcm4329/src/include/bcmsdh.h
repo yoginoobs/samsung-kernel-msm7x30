@@ -3,9 +3,9 @@
  *     export functions to client drivers
  *     abstract OS and BUS specific details of SDIO
  *
- * Copyright (C) 1999-2011, Broadcom Corporation
+ * Copyright (C) 1999-2010, Broadcom Corporation
  * 
- *         Unless you and Broadcom execute a separate written software license
+ *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
@@ -23,7 +23,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsdh.h,v 13.46.52.3 2010/10/19 00:41:44 Exp $
+ * $Id: bcmsdh.h,v 13.35.14.7.6.8 2009/10/14 04:22:25 Exp $
  */
 
 #ifndef	_bcmsdh_h_
@@ -33,7 +33,7 @@
 #define BCMSDH_INFO_VAL		0x0002 /* Info */
 extern const uint bcmsdh_msglevel;
 
-#define BCMSDH_ERROR(x)		printf x
+#define BCMSDH_ERROR(x)
 #define BCMSDH_INFO(x)
 
 /* forward declarations */
@@ -156,9 +156,6 @@ extern int bcmsdh_start(void *sdh, int stage);
 
 /* Stop SDIO Host Controller communication */
 extern int bcmsdh_stop(void *sdh);
-
-/* Wait system lock free */
-extern int bcmsdh_waitlockfree(void *sdh);
 
 /* Returns the "Device ID" of target device on the SDIO bus. */
 extern int bcmsdh_query_device(void *sdh);

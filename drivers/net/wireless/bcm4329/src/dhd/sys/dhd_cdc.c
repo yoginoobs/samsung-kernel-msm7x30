@@ -1,9 +1,9 @@
 /*
  * DHD Protocol Module for CDC and BDC.
  *
- * Copyright (C) 1999-2011, Broadcom Corporation
+ * Copyright (C) 1999-2010, Broadcom Corporation
  * 
- *         Unless you and Broadcom execute a separate written software license
+ *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
@@ -21,11 +21,11 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_cdc.c,v 1.51.6.28.4.1 2011/02/01 19:36:23 Exp $
+ * $Id: dhd_cdc.c,v 1.22.4.2.4.7.2.41 2010/06/23 19:58:18 Exp $
  *
  * BDC is like CDC, except it includes a header for data packets to convey
  * packet priority over the bus, and flags (e.g. to indicate checksum status
- * for dongle offload.)
+ * for dongle offload).
  */
 
 #include <typedefs.h>
@@ -41,9 +41,7 @@
 #include <dhd_bus.h>
 #include <dhd_dbg.h>
 
-#if defined(CONFIG_CONTROL_PM) || defined(DISABLE_PM)
-bool g_PMcontrol;
-#endif
+extern int dhd_preinit_ioctls(dhd_pub_t *dhd);
 
 
 /* Packet alignment for most efficient SDIO (can change based on platform) */
@@ -62,6 +60,7 @@ bool g_PMcontrol;
 #define ROUND_UP_MARGIN	2048 	/* Biggest SDIO block size possible for
 				 * round off at the end of buffer
 				 */
+#define MAX_TRY_CNT 5		//# of retries to disable deepsleep */
 
 typedef struct dhd_prot {
 	uint16 reqid;
@@ -75,13 +74,10 @@ typedef struct dhd_prot {
 static int
 dhdcdc_msg(dhd_pub_t *dhd)
 {
-	int err = 0;
 	dhd_prot_t *prot = dhd->prot;
 	int len = ltoh32(prot->msg.len) + sizeof(cdc_ioctl_t);
 
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
-
-	DHD_OS_WAKE_LOCK(dhd);
 
 	/* NOTE : cdc->msg.len holds the desired length of the buffer to be
 	 *        returned. Only up to CDC_MAX_MSG_SIZE of this buffer area
@@ -91,23 +87,19 @@ dhdcdc_msg(dhd_pub_t *dhd)
 		len = CDC_MAX_MSG_SIZE;
 
 	/* Send request */
-	err = dhd_bus_txctl(dhd->bus, (uchar*)&prot->msg, len);
-
-	DHD_OS_WAKE_UNLOCK(dhd);
-	return err;
+	return dhd_bus_txctl(dhd->bus, (uchar*)&prot->msg, len);
 }
 
 static int
 dhdcdc_cmplt(dhd_pub_t *dhd, uint32 id, uint32 len)
 {
 	int ret;
-	int cdc_len = len+sizeof(cdc_ioctl_t);
 	dhd_prot_t *prot = dhd->prot;
 
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
 
 	do {
-		ret = dhd_bus_rxctl(dhd->bus, (uchar*)&prot->msg, cdc_len);
+		ret = dhd_bus_rxctl(dhd->bus, (uchar*)&prot->msg, len+sizeof(cdc_ioctl_t));
 		if (ret < 0)
 			break;
 	} while (CDC_IOC_ID(ltoh32(prot->msg.flags)) != id);
@@ -116,7 +108,7 @@ dhdcdc_cmplt(dhd_pub_t *dhd, uint32 id, uint32 len)
 }
 
 int
-dhdcdc_query_ioctl(dhd_pub_t *dhd, int ifidx, uint cmd, void *buf, uint len, uint8 action)
+dhdcdc_query_ioctl(dhd_pub_t *dhd, int ifidx, uint cmd, void *buf, uint len)
 {
 	dhd_prot_t *prot = dhd->prot;
 	cdc_ioctl_t *msg = &prot->msg;
@@ -124,15 +116,13 @@ dhdcdc_query_ioctl(dhd_pub_t *dhd, int ifidx, uint cmd, void *buf, uint len, uin
 	int ret = 0, retries = 0;
 	uint32 id, flags = 0;
 
-	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
-	DHD_CTL(("%s: cmd %d len %d\n", __FUNCTION__, cmd, len));
-#ifdef DHD_COMMAND_TRACE
-	if ((cmd == WLC_SET_VAR) || (cmd == WLC_GET_VAR)) {
-		DHD_ERROR(("QUERY: %s %d\n", (char *)buf, len));
-	} else {
-		DHD_ERROR(("QUERY: %d %d\n", cmd, len));
+	if (DHD_TRACE_ON()) {
+		if ((cmd == WLC_GET_VAR) || (cmd == WLC_SET_VAR)) {
+			DHD_TRACE(("%s: cmd %d '%s' len %d\n", __FUNCTION__, cmd, (char *)buf, len));
+		} else {
+			DHD_TRACE(("%s: cmd %d len %d\n", __FUNCTION__, cmd, len));
+		}
 	}
-#endif
 
 	/* Respond "bcmerror" and "bcmerrorstr" with local cache */
 	if (cmd == WLC_GET_VAR && buf)
@@ -155,17 +145,13 @@ dhdcdc_query_ioctl(dhd_pub_t *dhd, int ifidx, uint cmd, void *buf, uint len, uin
 	msg->len = htol32(len);
 	msg->flags = (++prot->reqid << CDCF_IOC_ID_SHIFT);
 	CDC_SET_IF_IDX(msg, ifidx);
-	/* add additional action bits */
-	action &= WL_IOCTL_ACTION_MASK;
-	msg->flags |= (action << CDCF_IOC_ACTION_SHIFT);
 	msg->flags = htol32(msg->flags);
 
 	if (buf)
-		memcpy((void *)(&msg[1]), buf, len);
+		memcpy(prot->buf, buf, len);
 
 	if ((ret = dhdcdc_msg(dhd)) < 0) {
-		if (!dhd->hang_was_sent)
-			DHD_ERROR(("dhdcdc_query_ioctl: dhdcdc_msg failed w/status %d\n", ret));
+		DHD_ERROR(("dhdcdc_query_ioctl: dhdcdc_msg failed w/status %d\n", ret));
 		goto done;
 	}
 
@@ -210,50 +196,36 @@ done:
 }
 
 int
-dhdcdc_set_ioctl(dhd_pub_t *dhd, int ifidx, uint cmd, void *buf, uint len, uint8 action)
+dhdcdc_set_ioctl(dhd_pub_t *dhd, int ifidx, uint cmd, void *buf, uint len)
 {
 	dhd_prot_t *prot = dhd->prot;
 	cdc_ioctl_t *msg = &prot->msg;
 	int ret = 0;
 	uint32 flags, id;
 
-	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
-	DHD_CTL(("%s: cmd %d len %d\n", __FUNCTION__, cmd, len));
-
-	/* don't talk to the dongle if fw is about to be reloaded */
-	if (dhd->hang_was_sent) {
-		DHD_ERROR(("%s: HANG was sent up earlier. Not talking to the chip\n",
-			__FUNCTION__));
-		return -EIO;
-	}
-
-#ifdef DHD_COMMAND_TRACE
-	if ((cmd == WLC_SET_VAR) || (cmd == WLC_GET_VAR)) {
-		DHD_ERROR(("SET  : %s %d\n", (char *)buf, len));
-	} else {
-		DHD_ERROR(("SET  : %d %d\n", cmd, len));
-	}
-#endif
-#ifdef CONFIG_CONTROL_PM
-	if((g_PMcontrol == TRUE) && (cmd == WLC_SET_PM)) {
-		printk(KERN_INFO "SET PM ignore! !!!!!!!!!!!!!!!!!!!!!!! \r\n");
+	if (prot == 0) {
+		DHD_ERROR(("dhdcdc_set_ioctl: dhd->prot NULL. idx=%d, cmd=0x%x", ifidx, cmd));
 		goto done;
 	}
-#endif
 
+	if (DHD_TRACE_ON()) {
+		if ((cmd == WLC_GET_VAR) || (cmd == WLC_SET_VAR)) {
+			DHD_TRACE(("%s: cmd %d '%s' len %d\n", __FUNCTION__, cmd, (char *)buf, len));
+		} else {
+			DHD_TRACE(("%s: cmd %d len %d\n", __FUNCTION__, cmd, len));
+		}
+	}
+	
 	memset(msg, 0, sizeof(cdc_ioctl_t));
 
 	msg->cmd = htol32(cmd);
 	msg->len = htol32(len);
-	msg->flags = (++prot->reqid << CDCF_IOC_ID_SHIFT);
+	msg->flags = (++prot->reqid << CDCF_IOC_ID_SHIFT) | CDCF_IOC_SET;
 	CDC_SET_IF_IDX(msg, ifidx);
-	/* add additional action bits */
-	action &= WL_IOCTL_ACTION_MASK;
-	msg->flags |= (action << CDCF_IOC_ACTION_SHIFT) | CDCF_IOC_SET;
-	msg->flags = htol32(msg->flags);
+	msg->flags |= htol32(msg->flags);
 
 	if (buf)
-		memcpy((void *)(&msg[1]), buf, len);
+		memcpy(prot->buf, buf, len);
 
 	if ((ret = dhdcdc_msg(dhd)) < 0)
 		goto done;
@@ -283,18 +255,18 @@ done:
 	return ret;
 }
 
-
+extern int dhd_bus_interface(struct dhd_bus *bus, uint arg, void* arg2);
 int
 dhd_prot_ioctl(dhd_pub_t *dhd, int ifidx, wl_ioctl_t * ioc, void * buf, int len)
 {
 	dhd_prot_t *prot = dhd->prot;
 	int ret = -1;
-	uint8 action;
 
-	if ((dhd->busstate == DHD_BUS_DOWN) || dhd->hang_was_sent) {
+	if (dhd->busstate == DHD_BUS_DOWN) {
 		DHD_ERROR(("%s : bus is down. we have nothing to do\n", __FUNCTION__));
-		goto done;
+		return ret;
 	}
+	dhd_os_proto_block(dhd);
 
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
 
@@ -304,7 +276,7 @@ dhd_prot_ioctl(dhd_pub_t *dhd, int ifidx, wl_ioctl_t * ioc, void * buf, int len)
 		goto done;
 
 	if (prot->pending == TRUE) {
-		DHD_ERROR(("CDC packet is pending!!!! cmd=0x%x (%lu) lastcmd=0x%x (%lu)\n",
+		DHD_TRACE(("CDC packet is pending!!!! cmd=0x%x (%lu) lastcmd=0x%x (%lu)\n",
 			ioc->cmd, (unsigned long)ioc->cmd, prot->lastcmd,
 			(unsigned long)prot->lastcmd));
 		if ((ioc->cmd == WLC_SET_VAR) || (ioc->cmd == WLC_GET_VAR)) {
@@ -315,11 +287,10 @@ dhd_prot_ioctl(dhd_pub_t *dhd, int ifidx, wl_ioctl_t * ioc, void * buf, int len)
 
 	prot->pending = TRUE;
 	prot->lastcmd = ioc->cmd;
-	action = ioc->set;
-	if (action & WL_IOCTL_ACTION_SET)
-		ret = dhdcdc_set_ioctl(dhd, ifidx, ioc->cmd, buf, len, action);
+	if (ioc->set)
+		ret = dhdcdc_set_ioctl(dhd, ifidx, ioc->cmd, buf, len);
 	else {
-		ret = dhdcdc_query_ioctl(dhd, ifidx, ioc->cmd, buf, len, action);
+		ret = dhdcdc_query_ioctl(dhd, ifidx, ioc->cmd, buf, len);
 		if (ret > 0)
 			ioc->used = ret - sizeof(cdc_ioctl_t);
 	}
@@ -345,6 +316,8 @@ dhd_prot_ioctl(dhd_pub_t *dhd, int ifidx, wl_ioctl_t * ioc, void * buf, int len)
 	prot->pending = FALSE;
 
 done:
+	dhd_os_proto_unblock(dhd);
+
 	return ret;
 }
 
@@ -355,12 +328,12 @@ dhd_prot_iovar_op(dhd_pub_t *dhdp, const char *name,
 	return BCME_UNSUPPORTED;
 }
 
-
 void
 dhd_prot_dump(dhd_pub_t *dhdp, struct bcmstrbuf *strbuf)
 {
 	bcm_bprintf(strbuf, "Protocol CDC: reqid %d\n", dhdp->prot->reqid);
 }
+
 
 void
 dhd_prot_hdrpush(dhd_pub_t *dhd, int ifidx, void *pktbuf)
@@ -374,6 +347,7 @@ dhd_prot_hdrpush(dhd_pub_t *dhd, int ifidx, void *pktbuf)
 #ifdef BDC
 	/* Push BDC header used to convey priority for buses that don't */
 
+
 	PKTPUSH(dhd->osh, pktbuf, BDC_HEADER_LEN);
 
 	h = (struct bdc_header *)PKTDATA(dhd->osh, pktbuf);
@@ -385,10 +359,33 @@ dhd_prot_hdrpush(dhd_pub_t *dhd, int ifidx, void *pktbuf)
 
 	h->priority = (PKTPRIO(pktbuf) & BDC_PRIORITY_MASK);
 	h->flags2 = 0;
-	h->dataOffset = 0;
+	h->rssi = 0;
 #endif /* BDC */
 	BDC_SET_IF_IDX(h, ifidx);
 }
+
+
+bool
+dhd_proto_fcinfo(dhd_pub_t *dhd, void *pktbuf, uint8 *fcbits)
+{
+#ifdef BDC
+	struct bdc_header *h;
+
+	if (PKTLEN(dhd->osh, pktbuf) < BDC_HEADER_LEN) {
+		DHD_ERROR(("%s: rx data too short (%d < %d)\n",
+			__FUNCTION__, PKTLEN(dhd->osh, pktbuf), BDC_HEADER_LEN));
+		return BCME_ERROR;
+	}
+
+	h = (struct bdc_header *)PKTDATA(dhd->osh, pktbuf);
+
+	*fcbits = h->priority >> BDC_PRIORITY_FC_SHIFT;
+	if ((h->flags2 & BDC_FLAG2_FC_FLAG) == BDC_FLAG2_FC_FLAG)
+		return TRUE;
+#endif
+	return FALSE;
+}
+
 
 int
 dhd_prot_hdrpull(dhd_pub_t *dhd, int *ifidx, void *pktbuf)
@@ -417,12 +414,9 @@ dhd_prot_hdrpull(dhd_pub_t *dhd, int *ifidx, void *pktbuf)
 	}
 
 	if (((h->flags & BDC_FLAG_VER_MASK) >> BDC_FLAG_VER_SHIFT) != BDC_PROTO_VER) {
-		DHD_ERROR(("%s: non-BDC packet received, flags = 0x%x\n",
+		DHD_ERROR(("%s: non-BDC packet received, flags 0x%x\n",
 		           dhd_ifname(dhd, *ifidx), h->flags));
-		if (((h->flags & BDC_FLAG_VER_MASK) >> BDC_FLAG_VER_SHIFT) == BDC_PROTO_VER_1)
-			h->dataOffset = 0;
-		else
-			return BCME_ERROR;
+		return BCME_ERROR;
 	}
 
 	if (h->flags & BDC_FLAG_SUM_GOOD) {
@@ -432,16 +426,10 @@ dhd_prot_hdrpull(dhd_pub_t *dhd, int *ifidx, void *pktbuf)
 	}
 
 	PKTSETPRIO(pktbuf, (h->priority & BDC_PRIORITY_MASK));
+
 	PKTPULL(dhd->osh, pktbuf, BDC_HEADER_LEN);
 #endif /* BDC */
 
-	if (PKTLEN(dhd->osh, pktbuf) < (uint32) (h->dataOffset << 2)) {
-		DHD_ERROR(("%s: rx data too short (%d < %d)\n", __FUNCTION__,
-		           PKTLEN(dhd->osh, pktbuf), (h->dataOffset * 4)));
-		return BCME_ERROR;
-	}
-
-		PKTPULL(dhd->osh, pktbuf, (h->dataOffset << 2));
 	return 0;
 }
 
@@ -451,15 +439,15 @@ dhd_prot_attach(dhd_pub_t *dhd)
 	dhd_prot_t *cdc;
 
 #ifndef DHD_USE_STATIC_BUF
-	if (!(cdc = (dhd_prot_t *)MALLOC(dhd->osh, sizeof(dhd_prot_t)))) {
-		DHD_ERROR(("%s: kmalloc failed\n", __FUNCTION__));
-		goto fail;
-	}
+		if (!(cdc = (dhd_prot_t *)MALLOC(dhd->osh, sizeof(dhd_prot_t)))) {
+			DHD_ERROR(("%s: kmalloc failed\n", __FUNCTION__));
+			goto fail;
+		}
 #else
-	if (!(cdc = (dhd_prot_t *)dhd_os_prealloc(DHD_PREALLOC_PROT, sizeof(dhd_prot_t)))) {
-		DHD_ERROR(("%s: kmalloc failed\n", __FUNCTION__));
-		goto fail;
-	}
+		if (!(cdc = (dhd_prot_t *)dhd_os_prealloc(DHD_PREALLOC_PROT, sizeof(dhd_prot_t)))) {
+			DHD_ERROR(("%s: kmalloc failed\n", __FUNCTION__));
+			goto fail;
+		}
 #endif /* DHD_USE_STATIC_BUF */
 	memset(cdc, 0, sizeof(dhd_prot_t));
 
@@ -489,7 +477,7 @@ void
 dhd_prot_detach(dhd_pub_t *dhd)
 {
 #ifndef DHD_USE_STATIC_BUF
-	MFREE(dhd->osh, dhd->prot, sizeof(dhd_prot_t));
+		MFREE(dhd->osh, dhd->prot, sizeof(dhd_prot_t));
 #endif
 	dhd->prot = NULL;
 }
@@ -507,295 +495,34 @@ dhd_prot_dstats(dhd_pub_t *dhd)
 	return;
 }
 
-#if defined(USE_KEEP_ALIVE)
-int
-dhd_enable_keepalive(dhd_pub_t *dhd, uint32 period)
-{
-	int	buf_len;
-	int	str_len = 10;
-	char buf[256];
-
-	wl_keep_alive_pkt_t keep_alive_pkt;
-	wl_keep_alive_pkt_t	*pkt;
-
-	memset(buf, 0, sizeof(buf));
-	
-	memcpy(buf, "keep_alive", str_len);
-	buf[str_len] = 0;
-
-	pkt = (wl_keep_alive_pkt_t *) (buf + str_len + 1);
-	keep_alive_pkt.period_msec = period;
-	keep_alive_pkt.len_bytes = 0;
-	buf_len = str_len + 1 + sizeof(wl_keep_alive_pkt_t);
-	memcpy((char *)pkt, &keep_alive_pkt, WL_KEEP_ALIVE_FIXED_LEN);
-
-	if (0 == period) {
-		DHD_TRACE(("Disable Keep Alive\n"));
-	}
-	else {
-		DHD_TRACE(("Enable Keep Alive\n"));
-	}
-	return dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, buf, buf_len, TRUE, 0);
-}
-#endif /* USE_KEEP_ALIVE */
-
-#ifdef SOFTAP
-extern bool 	ap_fw_loaded;
-#endif
-
-#ifdef CONFIG_CONTROL_PM
-void sec_control_pm(dhd_pub_t *dhd, uint *);
-#endif
-
-int
-dhd_preinit_ioctls(dhd_pub_t *dhd)
-{
-	int ret = 0;
-	char eventmask[WL_EVENTING_MASK_LEN];
-	char iovbuf[WL_EVENTING_MASK_LEN + 12];	/*  Room for "event_msgs" + '\0' + bitvec  */
-
-	uint up = 0;
-#ifdef ROAM_ENABLE
-	uint roamvar = 0;
-	int roam_trigger[2] = {-75, WLC_BAND_ALL};
-	int roam_scan_period[2] = {10, WLC_BAND_ALL};
-	int roam_delta[2] = {10, WLC_BAND_ALL};
-	int roam_fullscan_period = 120;
-#else
-#ifdef BCMCCX
-	uint roamvar = 0;
-#else
-	uint roamvar = 1;
-#endif /* BCMCCX */
-#endif /* ROAM_ENABLE */
-#ifdef OKC_SUPPORT
-	uint32 okc = 1;
-#endif
-	uint power_mode = PM_FAST;
-	uint32 dongle_align = DHD_SDALIGN;
-	uint32 glom = 0;
-#ifdef BCMCCX
-	uint bcn_timeout = 6;
-#else
-	uint bcn_timeout = 8;
-#endif
-	int arpoe = 1;
-	int arp_ol = 0xb; /* Set arp_ol 0xb */
-#ifndef BCMCCX
-	int scan_assoc_time = 40;
-	int scan_unassoc_time = 80;
-#endif
-	int assoc_retry = 7;
-	char buf[256];
-#ifdef USE_WIFI_DIRECT
-	uint32 apsta = 1; /* Enable APSTA mode */
-	uint32 plcp = 0;
-#endif
-
-	/* query for 'ver' to get version info from firmware */
-	strcpy(buf, "ver");
-	if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_GET_VAR, buf, sizeof(buf), FALSE, 0)) < 0) {
-		DHD_ERROR(("%s: can't get F/W version , error=%d\n", __FUNCTION__, ret));
-		return BCME_NOTUP;
-	}
-	/* Print fw version info */
-	DHD_ERROR(("Firmware version = %s\n", buf));
-
-	/* Get the device MAC address */
-	strcpy(iovbuf, "cur_etheraddr");
-	if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_GET_VAR, iovbuf, sizeof(iovbuf), FALSE, 0)) < 0) {
-		DHD_ERROR(("%s: can't get MAC address , error=%d\n", __FUNCTION__, ret));
-		return BCME_NOTUP;
-	}
-	memcpy(dhd->mac.octet, iovbuf, ETHER_ADDR_LEN);
-
-#ifdef SOFTAP
-	if(!ap_fw_loaded) {
-#endif /* SOFTAP */
-		/* Set Country code */
-		if (dhd->country_code[0] != 0) {
-			if (dhd_wl_ioctl_cmd(dhd, WLC_SET_COUNTRY,
-				dhd->country_code, sizeof(dhd->country_code), TRUE, 0) < 0) {
-				DHD_ERROR(("%s: country code setting failed\n", __FUNCTION__));
-			}
-		}
-#ifdef SOFTAP
-	}
-#endif /* SOFTAP */
-
-#ifdef BCMCCX
-	if(roamvar)
-	   DHD_ERROR(("%s: roam_off=%d BCMCCX roam_off should be 0\n", __FUNCTION__, roamvar));
-#endif
-	/* Disable built-in roaming to allowed ext supplicant to take care of roaming */
-	bcm_mkiovar("roam_off", (char *)&roamvar, 4, iovbuf, sizeof(iovbuf));
-	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
-
-#ifdef ROAM_ENABLE
-	dhdcdc_set_ioctl(dhd, 0, WLC_SET_ROAM_TRIGGER, roam_trigger, sizeof(roam_trigger), 1);
-	dhdcdc_set_ioctl(dhd, 0, WLC_SET_ROAM_SCAN_PERIOD, roam_scan_period, sizeof(roam_scan_period), 1);
-	dhdcdc_set_ioctl(dhd, 0, WLC_SET_ROAM_DELTA, roam_delta, sizeof(roam_delta), 1);
-	bcm_mkiovar("fullroamperiod", (char *)&roam_fullscan_period, 4, iovbuf, sizeof(iovbuf));
-	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
-#endif
-
-#ifdef OKC_SUPPORT
-	bcm_mkiovar("okc_enable", (char *)&okc, 4, iovbuf, sizeof(iovbuf));
-	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
-#endif
-
-#ifdef CONFIG_CONTROL_PM
-	sec_control_pm(dhd, &power_mode);
-#else
-	/* Set PowerSave mode */
-	dhd_wl_ioctl_cmd(dhd, WLC_SET_PM, (char *)&power_mode, sizeof(power_mode), TRUE, 0);
-#endif
-
-#ifdef BCMDISABLE_PM
-	power_mode = PM_OFF;	
-	/* Disable PowerSave Mode */
-	dhd_wl_ioctl_cmd(dhd, WLC_SET_PM, (char *)&power_mode, sizeof(power_mode), TRUE, 0);
-	/* Turn off MPC in AP mode */
-	bcm_mkiovar("mpc", (char *)&power_mode, 4, iovbuf, sizeof(iovbuf));
-	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
-	g_PMcontrol = TRUE;
-#endif
-
-	/* Match Host and Dongle rx alignment */
-	bcm_mkiovar("bus:txglomalign", (char *)&dongle_align, 4, iovbuf, sizeof(iovbuf));
-	ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
-	if (ret < 0)
-		DHD_ERROR(("%s: set bus:txglomalign=%d error\n", __FUNCTION__, dongle_align));
-
-	/* disable glom option per default */
-	bcm_mkiovar("bus:txglom", (char *)&glom, 4, iovbuf, sizeof(iovbuf));
-	ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
-	if (ret < 0)
-		DHD_ERROR(("%s: set bus:txglom=%d error\n", __FUNCTION__, glom));
-	/* Setup timeout if Beacons are lost to report link down */
-	bcm_mkiovar("bcn_timeout", (char *)&bcn_timeout, 4, iovbuf, sizeof(iovbuf));
-	ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
-	if (ret < 0)
-		DHD_ERROR(("%s: set bcn_timeout=%d error\n", __FUNCTION__, bcn_timeout));
-
-#ifdef USE_WIFI_DIRECT
-	/* Enable APSTA mode */
-	bcm_mkiovar("apsta", (char *)&apsta, 4, iovbuf, sizeof(iovbuf));
-	ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
-	if (ret < 0)
-		DHD_ERROR(("%s: set apsta=%d error\n", __FUNCTION__, apsta));
-#endif
-
-	/* Force STA UP */
-	ret = dhd_wl_ioctl_cmd(dhd, WLC_UP, (char *)&up, sizeof(up), TRUE, 0);
-	if (ret < 0) {
-		DHD_ERROR(("%s: WLC_UP error\n", __FUNCTION__));
-		goto done;
-	}
-
-	/* Setup event_msgs */
-	bcm_mkiovar("event_msgs", eventmask, WL_EVENTING_MASK_LEN, iovbuf, sizeof(iovbuf));
-	ret = dhd_wl_ioctl_cmd(dhd, WLC_GET_VAR, iovbuf, sizeof(iovbuf), FALSE, 0);
-	if (ret < 0) {
-		DHD_ERROR(("%s: get event_msgs error\n", __FUNCTION__));
-		goto done;
-	}
-	bcopy(iovbuf, eventmask, WL_EVENTING_MASK_LEN);
-
-	/* Setup event_msgs */
-	setbit(eventmask, WLC_E_SET_SSID);
-	setbit(eventmask, WLC_E_PRUNE);
-	setbit(eventmask, WLC_E_AUTH);
-	setbit(eventmask, WLC_E_REASSOC);
-	setbit(eventmask, WLC_E_REASSOC_IND);
-	setbit(eventmask, WLC_E_DEAUTH_IND);
-	setbit(eventmask, WLC_E_DISASSOC_IND);
-	setbit(eventmask, WLC_E_DISASSOC);
-	setbit(eventmask, WLC_E_JOIN);
-	setbit(eventmask, WLC_E_ASSOC_IND);
-	setbit(eventmask, WLC_E_PSK_SUP);
-	setbit(eventmask, WLC_E_LINK);
-	setbit(eventmask, WLC_E_NDIS_LINK);
-	setbit(eventmask, WLC_E_MIC_ERROR);
-	setbit(eventmask, WLC_E_PMKID_CACHE);
-//	setbit(eventmask, WLC_E_TXFAIL);
-	setbit(eventmask, WLC_E_JOIN_START);
-	setbit(eventmask, WLC_E_SCAN_COMPLETE);
-#ifdef CIQ_SUPPORT
-	setbit(eventmask, WLC_E_AUTH_IND);
-#endif
-#ifdef WLMEDIA_HTSF
-	setbit(eventmask, WLC_E_HTSFSYNC);
-#endif
-#ifdef USE_FW_TRACE
-	setbit(eventmask, WLC_E_TRACE);
-#endif
-#ifdef SOFTAP
-	setbit(eventmask, WLC_E_DEAUTH);
-#endif
-#if defined(BCMCCX) && defined(BCMDBG_EVENT)
-	setbit(eventmask, WLC_E_ADDTS_IND);
-	setbit(eventmask, WLC_E_DELTS_IND);
-#endif /* defined(BCMCCX) && (BCMDBG_EVENT) */
-
-	bcm_mkiovar("event_msgs", eventmask, WL_EVENTING_MASK_LEN, iovbuf, sizeof(iovbuf));
-	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
-
-#ifndef BCMCCX
-	dhd_wl_ioctl_cmd(dhd, WLC_SET_SCAN_CHANNEL_TIME, (char *)&scan_assoc_time,
-		sizeof(scan_assoc_time), TRUE, 0);
-	dhd_wl_ioctl_cmd(dhd, WLC_SET_SCAN_UNASSOC_TIME, (char *)&scan_unassoc_time,
-		sizeof(scan_unassoc_time), TRUE, 0);
-#endif
-
-	/* Set ARP offload */
-	bcm_mkiovar("arpoe", (char *)&arpoe, 4, iovbuf, sizeof(iovbuf));
-	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
-	bcm_mkiovar("arp_ol", (char *)&arp_ol, 4, iovbuf, sizeof(iovbuf));
-	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
-
-	bcm_mkiovar("assoc_retry_max", (char *)&assoc_retry, 4, iovbuf, sizeof(iovbuf));
-	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
-
-#if defined(USE_KEEP_ALIVE)
-	DHD_ERROR(("%s: KEEP Alive time is 45s \n", __FUNCTION__));
-	ret = dhd_enable_keepalive(dhd, 45000); /* 45 sec */
-	if (ret) {
-		DHD_ERROR(("%s: Keepalive setting failure, error=%d\n", __FUNCTION__, ret));
-		/* For MFG mode */
-		ret = 0;
-	}
-#endif
-
-#ifdef USE_WIFI_DIRECT
-	dhd_wl_ioctl_cmd(dhd, WLC_SET_PLCPHDR, &plcp, 4, TRUE, 0);
-#endif
-
-done:
-	return ret;
-}
-
 int
 dhd_prot_init(dhd_pub_t *dhd)
 {
 	int ret = 0;
-	wlc_rev_info_t revinfo;
+	char buf[128];
+
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
 
+	dhd_os_proto_block(dhd);
 
-	/* Get the device rev info */
-	memset(&revinfo, 0, sizeof(revinfo));
-	ret = dhd_wl_ioctl_cmd(dhd, WLC_GET_REVINFO, &revinfo, sizeof(revinfo), FALSE, 0);
-	if (ret < 0)
-		goto done;
+	/* Get the device MAC address */
+	strcpy(buf, "cur_etheraddr");
+	ret = dhdcdc_query_ioctl(dhd, 0, WLC_GET_VAR, buf, sizeof(buf));
+	if (ret < 0) {
+		dhd_os_proto_unblock(dhd);
+		return ret;
+	}
+	memcpy(dhd->mac.octet, buf, ETHER_ADDR_LEN);
 
+	dhd_os_proto_unblock(dhd);
 
+#ifdef EMBEDDED_PLATFORM
 	ret = dhd_preinit_ioctls(dhd);
+#endif /* EMBEDDED_PLATFORM */
 
 	/* Always assumes wl for now */
 	dhd->iswl = TRUE;
 
-done:
 	return ret;
 }
 
@@ -805,11 +532,7 @@ dhd_prot_stop(dhd_pub_t *dhd)
 	/* Nothing to do for CDC */
 }
 
-#define MAX_TRY_CNT 5		//# of retries to disable deepsleep */
-
 dhd_pub_t *dhd_get_pub(struct net_device *dev); /* dhd_linux.c */
-
-void dhd_set_packet_filter(int value, dhd_pub_t *dhd);
 
 int dhd_deepsleep(struct net_device *dev, int flag) 
 {
@@ -821,20 +544,16 @@ int dhd_deepsleep(struct net_device *dev, int flag)
 	switch (flag) {
 		case 1 :  /* Deepsleep on */
 			DHD_ERROR(("[WiFi] Deepsleep On\n"));
-			/* give some time to _dhd_sysioc_thread() before deepsleep */
-			msleep(200);
-			if (dhd_pkt_filter_enable && !ap_fw_loaded) {
-				dhd_set_packet_filter(0, dhdp);
-			}
+			
 			/* Disable MPC */
 			powervar = 0;
 			bcm_mkiovar("mpc", (char *)&powervar, 4, iovbuf, sizeof(iovbuf));
-			dhdcdc_set_ioctl(dhdp, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf), 1);
+			dhdcdc_set_ioctl(dhdp, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf));
 
 			/* Enable Deepsleep*/
 			powervar = 1;
 			bcm_mkiovar("deepsleep", (char *)&powervar, 4, iovbuf, sizeof(iovbuf));
-			dhdcdc_set_ioctl(dhdp, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf), 1);
+			dhdcdc_set_ioctl(dhdp, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf));
 			break;
 
 		case 0: /* Deepsleep Off */
@@ -842,27 +561,27 @@ int dhd_deepsleep(struct net_device *dev, int flag)
 
 			/* Disable Deepsleep */
 			for( cnt = 0 ; cnt < MAX_TRY_CNT ; cnt++ ) {
-				powervar = 0;
-				bcm_mkiovar("deepsleep", (char *)&powervar, 4, iovbuf, sizeof(iovbuf));
-				dhdcdc_set_ioctl(dhdp, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf), 1);
+			powervar = 0;
+			bcm_mkiovar("deepsleep", (char *)&powervar, 4, iovbuf, sizeof(iovbuf));
+			dhdcdc_set_ioctl(dhdp, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf));
 				memset(iovbuf,0,sizeof(iovbuf));
 				strcpy(iovbuf, "deepsleep");
 
-				if ((ret = dhdcdc_query_ioctl(dhdp, 0, WLC_GET_VAR, iovbuf, sizeof(iovbuf), 0)) < 0 ) {
+				if ((ret = dhdcdc_query_ioctl(dhdp, 0, WLC_GET_VAR, iovbuf, sizeof(iovbuf))) < 0 ) {
 					DHD_ERROR(("the error of dhd deepsleep status ret value : %d\n",ret));
 				}else {
-					if(!(*(int *)iovbuf )) {
-						DHD_ERROR(("deepsleep mode is 0, ok , count : %d\n",cnt));
-						break;
-					}
+				if(!(*(int *)iovbuf )) {
+					DHD_ERROR(("deepsleep mode is 0, ok , count : %d\n",cnt));
+					break;
 				}
+			}
 			}
 
 			/* Enable MPC */
 			powervar = 1;
 			memset(iovbuf,0,sizeof(iovbuf));
 			bcm_mkiovar("mpc", (char *)&powervar, 4, iovbuf, sizeof(iovbuf));
-			dhdcdc_set_ioctl(dhdp, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf), 1);
+			dhdcdc_set_ioctl(dhdp, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf));
 			break;
 	}
 

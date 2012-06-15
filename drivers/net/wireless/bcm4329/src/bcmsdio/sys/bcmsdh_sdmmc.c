@@ -1,9 +1,9 @@
 /*
  * BCMSDH Function Driver for the native SDIO/MMC driver in the Linux Kernel
  *
- * Copyright (C) 1999-2011, Broadcom Corporation
+ * Copyright (C) 1999-2010, Broadcom Corporation
  * 
- *         Unless you and Broadcom execute a separate written software license
+ *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsdh_sdmmc.c,v 1.14.64.3 2010/12/23 01:13:15 Exp $
+ * $Id: bcmsdh_sdmmc.c,v 1.1.2.5.6.30.4.1 2010/09/02 23:12:21 Exp $
  */
 #include <typedefs.h>
 
@@ -302,8 +302,7 @@ sdioh_interrupt_register(sdioh_info_t *sd, sdioh_cb_fn_t fn, void *argh)
 	}
 #elif defined(HW_OOB)
 	sdioh_enable_func_intr();
-#endif /* !defined(OOB_INTR_ONLY) */
-
+#endif /* defined(OOB_INTR_ONLY) */
 	return SDIOH_API_RC_SUCCESS;
 }
 
@@ -676,11 +675,7 @@ sdioh_enable_hw_oob_intr(sdioh_info_t *sd, bool enable)
 		data = 3;	/* enable hw oob interrupt */
 	else
 		data = 4;	/* disable hw oob interrupt */
-
-#if 1 && LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35)
-	/* Needed for Android Linux Kernel 2.6.35 */
-	data |= 4; 		/* Active HIGH */
-#endif /* OEM_ANDROID */
+	data |= 4;		/* Active HIGH */
 
 	status = sdioh_request_byte(sd, SDIOH_WRITE, 0, 0xf2, &data);
 	return status;
@@ -945,11 +940,10 @@ sdioh_request_packet(sdioh_info_t *sd, uint fix_inc, uint write, uint func,
 		}
 
 		if (err_ret) {
-			/*sd_err(("%s: %s FAILED %p[%d], addr=0x%05x,
-				pkt_len=%d, ERR=0x%08x\n",
+			sd_err(("%s: %s FAILED %p[%d], addr=0x%05x, pkt_len=%d, ERR=0x%08x\n",
 				__FUNCTION__,
 				(write) ? "TX" : "RX",
-				pnext, SGCount, addr, pkt_len, err_ret));*/
+				pnext, SGCount, addr, pkt_len, err_ret));
 		} else {
 			sd_trace(("%s: %s xfr'd %p[%d], addr=0x%05x, len=%d\n",
 				__FUNCTION__,
@@ -1216,51 +1210,51 @@ sdioh_start(sdioh_info_t *si, int stage)
 		sdio access will come in way
 	*/
 	if (gInstance->func[0]) {
-		if (stage == 0) {
-			/* Since the power to the chip is killed, we will have
-				re enumerate the device again. Set the block size
-				and enable the fucntion 1 for in preparation for
-				downloading the code
-			*/
-			/* sdio_reset_comm() - has been fixed in latest kernel/msm.git for Linux
-			   2.6.27. The implementation prior to that is buggy, and needs broadcom's
-			   patch for it
-			*/
-			if ((ret = sdio_reset_comm(gInstance->func[0]->card)))
-				sd_err(("%s Failed, error = %d\n", __FUNCTION__, ret));
-			else {
-				sd->num_funcs = 2;
-				sd->sd_blockmode = TRUE;
-				sd->use_client_ints = TRUE;
-				sd->client_block_size[0] = 64;
+			if (stage == 0) {
+		/* Since the power to the chip is killed, we will have
+			re enumerate the device again. Set the block size
+			and enable the fucntion 1 for in preparation for
+			downloading the code
+		*/
+		/* sdio_reset_comm() - has been fixed in latest kernel/msm.git for Linux
+		   2.6.27. The implementation prior to that is buggy, and needs broadcom's
+		   patch for it
+		*/
+		if ((ret = sdio_reset_comm(gInstance->func[0]->card)))
+			sd_err(("%s Failed, error = %d\n", __FUNCTION__, ret));
+		else {
+			sd->num_funcs = 2;
+			sd->sd_blockmode = TRUE;
+			sd->use_client_ints = TRUE;
+			sd->client_block_size[0] = 64;
 
-				/* Claim host controller */
-				sdio_claim_host(gInstance->func[1]);
+			/* Claim host controller */
+			sdio_claim_host(gInstance->func[1]);
 
-				sd->client_block_size[1] = 64;
-				if (sdio_set_block_size(gInstance->func[1], 64)) {
-					sd_err(("bcmsdh_sdmmc: Failed to set F1 blocksize\n"));
+			sd->client_block_size[1] = 64;
+			if (sdio_set_block_size(gInstance->func[1], 64)) {
+				sd_err(("bcmsdh_sdmmc: Failed to set F1 blocksize\n"));
+			}
+
+			/* Release host controller F1 */
+			sdio_release_host(gInstance->func[1]);
+
+			if (gInstance->func[2]) {
+				/* Claim host controller F2 */
+				sdio_claim_host(gInstance->func[2]);
+
+				sd->client_block_size[2] = sd_f2_blocksize;
+				if (sdio_set_block_size(gInstance->func[2],
+					sd_f2_blocksize)) {
+					sd_err(("bcmsdh_sdmmc: Failed to set F2 "
+						"blocksize to %d\n", sd_f2_blocksize));
 				}
 
-				/* Release host controller F1 */
-				sdio_release_host(gInstance->func[1]);
+				/* Release host controller F2 */
+				sdio_release_host(gInstance->func[2]);
+			}
 
-				if (gInstance->func[2]) {
-					/* Claim host controller F2 */
-					sdio_claim_host(gInstance->func[2]);
-
-					sd->client_block_size[2] = sd_f2_blocksize;
-					if (sdio_set_block_size(gInstance->func[2],
-						sd_f2_blocksize)) {
-						sd_err(("bcmsdh_sdmmc: Failed to set F2 "
-							"blocksize to %d\n", sd_f2_blocksize));
-					}
-
-					/* Release host controller F2 */
-					sdio_release_host(gInstance->func[2]);
-				}
-
-				sdioh_sdmmc_card_enablefuncs(sd);
+			sdioh_sdmmc_card_enablefuncs(sd);
 			}
 		} else {
 #if !defined(OOB_INTR_ONLY)
@@ -1307,10 +1301,4 @@ sdioh_stop(sdioh_info_t *si)
 	else
 		sd_err(("%s Failed\n", __FUNCTION__));
 	return (0);
-}
-
-int
-sdioh_waitlockfree(sdioh_info_t *sd)
-{
-	return (1);
 }

@@ -2,9 +2,9 @@
  *  BCMSDH interface glue
  *  implement bcmsdh API for SDIOH driver
  *
- * Copyright (C) 1999-2011, Broadcom Corporation
+ * Copyright (C) 1999-2010, Broadcom Corporation
  * 
- *         Unless you and Broadcom execute a separate written software license
+ *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
@@ -22,7 +22,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsdh.c,v 1.57.6.4 2010/12/23 01:13:15 Exp $
+ * $Id: bcmsdh.c,v 1.35.2.1.4.8.6.13 2010/04/06 03:26:57 Exp $
  */
 /* ****************** BCMSDH Interface Functions *************************** */
 
@@ -592,16 +592,6 @@ bcmsdh_stop(void *sdh)
 	bcmsdh_info_t *bcmsdh = (bcmsdh_info_t *)sdh;
 
 	return sdioh_stop(bcmsdh->sdioh);
-}
-
-int
-bcmsdh_waitlockfree(void *sdh)
-{
-	bcmsdh_info_t *bcmsdh = (bcmsdh_info_t *)sdh;
-	if (!bcmsdh)
-		bcmsdh = l_bcmsdh;
-
-	return sdioh_waitlockfree(bcmsdh->sdioh);
 }
 
 

@@ -2,9 +2,9 @@
  * Broadcom SDIO/PCMCIA
  * Software-specific definitions shared between device and host side
  *
- * Copyright (C) 1999-2011, Broadcom Corporation
+ * Copyright (C) 1999-2010, Broadcom Corporation
  * 
- *         Unless you and Broadcom execute a separate written software license
+ *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
@@ -22,7 +22,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsdpcm.h,v 13.4.90.2 2010/05/12 04:14:25 Exp $
+ * $Id: bcmsdpcm.h,v 1.1.2.4 2010/07/02 01:15:46 Exp $
  */
 
 #ifndef	_bcmsdpcm_h_
@@ -37,8 +37,6 @@
 #define I_SMB_INT_ACK	I_SMB_SW1	/* To SB Mailbox Host Interrupt ACK */
 #define I_SMB_USE_OOB	I_SMB_SW2	/* To SB Mailbox Use OOB Wakeup */
 #define I_SMB_DEV_INT	I_SMB_SW3	/* To SB Mailbox Miscellaneous Interrupt */
-
-#define I_TOSBMAIL      (I_SMB_NAK | I_SMB_INT_ACK | I_SMB_USE_OOB | I_SMB_DEV_INT)
 
 /* tosbmailbox bits corresponding to intstatus bits */
 #define SMB_NAK		(1 << 0)	/* To SB Mailbox Frame NAK */
@@ -61,8 +59,6 @@
 #define I_HMB_FRAME_IND	I_HMB_SW2	/* To Host Mailbox Frame Indication */
 #define I_HMB_HOST_INT	I_HMB_SW3	/* To Host Mailbox Miscellaneous Interrupt */
 
-#define I_TOHOSTMAIL    (I_HMB_FC_CHANGE | I_HMB_FRAME_IND | I_HMB_HOST_INT)
-
 /* tohostmailbox bits corresponding to intstatus bits */
 #define HMB_FC_ON	(1 << 0)	/* To Host Mailbox Flow Control State */
 #define HMB_FC_CHANGE	(1 << 1)	/* To Host Mailbox Flow Control State Changed */
@@ -71,11 +67,10 @@
 #define HMB_MASK	0x0000000f	/* To Host Mailbox Mask */
 
 /* tohostmailboxdata */
-#define HMB_DATA_NAKHANDLED	0x01	/* we're ready to retransmit NAK'd frame to host */
-#define HMB_DATA_DEVREADY	0x02	/* we're ready to to talk to host after enable */
-#define HMB_DATA_FC		0x04	/* per prio flowcontrol update flag to host */
-#define HMB_DATA_FWREADY	0x08	/* firmware is ready for protocol activity */
-#define HMB_DATA_FWHALT		0x10	/* firmware has halted operation */
+#define HMB_DATA_NAKHANDLED	1	/* we're ready to retransmit NAK'd frame to host */
+#define HMB_DATA_DEVREADY	2	/* we're ready to to talk to host after enable */
+#define HMB_DATA_FC		4	/* per prio flowcontrol update flag to host */
+#define HMB_DATA_FWREADY	8	/* firmware is ready for protocol activity */
 
 #define HMB_DATA_FCDATA_MASK	0xff000000	/* per prio flowcontrol data */
 #define HMB_DATA_FCDATA_SHIFT	24		/* per prio flowcontrol data */
@@ -243,17 +238,14 @@ typedef volatile struct {
 	 PCMDFIFOREG(h))
 
 /*
- * Shared structure between dongle and the host.
- * The structure contains pointers to trap or assert information.
+ * Shared structure between dongle and the host
+ * The structure contains pointers to trap or assert information shared with the host
  */
-#define SDPCM_SHARED_VERSION       0x0001
+#define SDPCM_SHARED_VERSION       0x0002
 #define SDPCM_SHARED_VERSION_MASK  0x00FF
 #define SDPCM_SHARED_ASSERT_BUILT  0x0100
 #define SDPCM_SHARED_ASSERT        0x0200
 #define SDPCM_SHARED_TRAP          0x0400
-#define SDPCM_SHARED_IN_BRPT       0x0800
-#define SDPCM_SHARED_SET_BRPT      0x1000
-#define SDPCM_SHARED_PENDING_BRPT  0x2000
 
 typedef struct {
 	uint32	flags;
@@ -263,12 +255,9 @@ typedef struct {
 	uint32  assert_line;
 	uint32	console_addr;		/* Address of hndrte_cons_t */
 	uint32  msgtrace_addr;
-	uint32  brpt_addr;
+	uint8   tag[32];
 } sdpcm_shared_t;
 
 extern sdpcm_shared_t sdpcm_shared;
-
-/* Function can be used to notify host of FW halt */
-extern void sdpcmd_fwhalt(void);
 
 #endif	/* _bcmsdpcm_h_ */

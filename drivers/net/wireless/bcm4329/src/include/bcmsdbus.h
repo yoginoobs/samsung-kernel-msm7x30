@@ -2,9 +2,9 @@
  * Definitions for API from sdio common code (bcmsdh) to individual
  * host controller drivers.
  *
- * Copyright (C) 1999-2011, Broadcom Corporation
+ * Copyright (C) 1999-2010, Broadcom Corporation
  * 
- *         Unless you and Broadcom execute a separate written software license
+ *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
@@ -22,7 +22,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsdbus.h,v 13.17.86.2 2010/12/23 01:13:20 Exp $
+ * $Id: bcmsdbus.h,v 13.11.14.2.6.6 2009/10/27 17:20:28 Exp $
  */
 
 #ifndef	_sdio_api_h_
@@ -105,9 +105,6 @@ extern int sdioh_abort(sdioh_info_t *si, uint fnc);
 /* Start and Stop SDIO without re-enumerating the SD card. */
 extern int sdioh_start(sdioh_info_t *si, int stage);
 extern int sdioh_stop(sdioh_info_t *si);
-
-/* Wait system lock free */
-extern int sdioh_waitlockfree(sdioh_info_t *si);
 
 /* Reset and re-initialize the device */
 extern int sdioh_sdio_reset(sdioh_info_t *si);

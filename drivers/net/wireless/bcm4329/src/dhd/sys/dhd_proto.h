@@ -4,9 +4,9 @@
  * Provides type definitions and function prototypes used to link the
  * DHD OS, bus, and protocol modules.
  *
- * Copyright (C) 1999-2011, Broadcom Corporation
+ * Copyright (C) 1999-2010, Broadcom Corporation
  * 
- *         Unless you and Broadcom execute a separate written software license
+ *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
@@ -24,7 +24,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_proto.h,v 1.8.10.6 2010/12/22 23:47:24 Exp $
+ * $Id: dhd_proto.h,v 1.2.82.1.4.1.16.7 2010/05/10 12:54:59 Exp $
  */
 
 #ifndef _dhd_proto_h_
@@ -34,13 +34,11 @@
 #include <wlioctl.h>
 
 #ifndef IOCTL_RESP_TIMEOUT
-#if defined(CONFIG_MACH_SAMSUNG_T1) || defined(CONFIG_MACH_SAMSUNG_Q1)\
-	|| defined(CONFIG_MACH_U8500)
-/* As test results, Ti has max 3.5 sec response time */
-#define IOCTL_RESP_TIMEOUT  5000 /* In milli second */
-#else
 #define IOCTL_RESP_TIMEOUT  2000 /* In milli second */
 #endif
+
+#ifndef IOCTL_CHIP_ACTIVE_TIMEOUT
+#define IOCTL_CHIP_ACTIVE_TIMEOUT  10 /* In milli second */
 #endif
 
 /*
@@ -61,6 +59,8 @@ extern int dhd_prot_init(dhd_pub_t *dhdp);
 /* Stop protocol: sync w/dongle state. */
 extern void dhd_prot_stop(dhd_pub_t *dhdp);
 
+extern bool dhd_proto_fcinfo(dhd_pub_t *dhd, void *pktbuf, uint8 *fcbits);
+
 /* Add any protocol-specific data header.
  * Caller must reserve prot_hdrlen prepend space.
  */
@@ -71,9 +71,6 @@ extern int dhd_prot_hdrpull(dhd_pub_t *, int *ifidx, void *rxp);
 
 /* Use protocol to issue ioctl to dongle */
 extern int dhd_prot_ioctl(dhd_pub_t *dhd, int ifidx, wl_ioctl_t * ioc, void * buf, int len);
-
-/* Handles a protocol control response asynchronously */
-extern int dhd_prot_ctl_complete(dhd_pub_t *dhd);
 
 /* Check for and handle local prot-specific iovar commands */
 extern int dhd_prot_iovar_op(dhd_pub_t *dhdp, const char *name,
@@ -88,7 +85,6 @@ extern void dhd_prot_dstats(dhd_pub_t *dhdp);
 extern int dhd_ioctl(dhd_pub_t * dhd_pub, dhd_ioctl_t *ioc, void * buf, uint buflen);
 
 extern int dhd_preinit_ioctls(dhd_pub_t *dhd);
-
 
 /********************************
  * For version-string expansion *

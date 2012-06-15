@@ -1,9 +1,9 @@
 /*
  * Broadcom HND chip & on-chip-interconnect-related definitions.
  *
- * Copyright (C) 1999-2011, Broadcom Corporation
+ * Copyright (C) 1999-2010, Broadcom Corporation
  * 
- *         Unless you and Broadcom execute a separate written software license
+ *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: hndsoc.h,v 13.11 2009/12/03 23:52:31 Exp $
+ * $Id: hndsoc.h,v 13.3.10.3 2008/08/06 03:43:25 Exp $
  */
 
 #ifndef	_HNDSOC_H
@@ -40,19 +40,17 @@
 #define SI_PCI_MEM_SZ		(64 * 1024 * 1024)
 #define SI_PCI_CFG		0x0c000000	/* Host Mode sb2pcitranslation1 (64 MB) */
 #define	SI_SDRAM_SWAPPED	0x10000000	/* Byteswapped Physical SDRAM */
-#define SI_SDRAM_R2		0x80000000	/* Region 2 for sdram (512 MB) */
 
 #define SI_ENUM_BASE    	0x18000000	/* Enumeration space base */
-
-#define SI_WRAP_BASE    	0x18100000	/* Wrapper space base */
 #define SI_CORE_SIZE    	0x1000		/* each core gets 4Kbytes for registers */
+#ifndef SI_MAXCORES
 #define	SI_MAXCORES		16		/* Max cores (this is arbitrary, for software
 						 * convenience and could be changed if we
 						 * make any larger chips
 						 */
+#endif
 
 #define	SI_FASTRAM		0x19000000	/* On-chip RAM on chips that also have DDR */
-#define	SI_FASTRAM_SWAPPED	0x19800000
 
 #define	SI_FLASH2		0x1c000000	/* Flash Region 2 (region 1 shadowed here) */
 #define	SI_FLASH2_SZ		0x02000000	/* Size of Flash Region 2 */
@@ -120,7 +118,7 @@
 #define	SSNPHY_CORE_ID		0x828		/* 802.11n single-stream phy core */
 #define	SDIOD_CORE_ID		0x829		/* SDIO device core */
 #define	ARMCM3_CORE_ID		0x82a		/* ARM Cortex M3 core */
-#define	HTPHY_CORE_ID		0x82b		/* 802.11n 4x4 phy core */
+#define	QNPHY_CORE_ID		0x82b		/* 802.11n 4x4 phy core */
 #define	MIPS74K_CORE_ID		0x82c		/* mips 74k core */
 #define	GMAC_CORE_ID		0x82d		/* Gigabit MAC core */
 #define	DMEMC_CORE_ID		0x82e		/* DDR1/2 memory controller core */
@@ -130,8 +128,6 @@
 #define	AHB_CORE_ID		0x832		/* OCP2AHB bridge core */
 #define	SPIH_CORE_ID		0x833		/* SPI host core */
 #define	I2S_CORE_ID		0x834		/* I2S core */
-#define	DMEMS_CORE_ID		0x835		/* SDR/DDR1 memory controller core */
-#define	DEF_SHIM_COMP		0x837		/* SHIM component in ubus/6362 */
 #define OOB_ROUTER_CORE_ID	0x367		/* OOB router core ID */
 #define	DEF_AI_COMP		0xfff		/* Default component, in ai chips it maps all
 						 * unused address ranges
@@ -145,7 +141,6 @@
 /* SOC Interconnect types (aka chip types) */
 #define	SOCI_SB			0
 #define	SOCI_AI			1
-#define	SOCI_UBUS		2
 
 /* Common core control flags */
 #define	SICF_BIST_EN		0x8000
@@ -173,15 +168,8 @@
 #define	CCS_ALPAREQ		0x00000008	/* ALP Avail Request */
 #define	CCS_HTAREQ		0x00000010	/* HT Avail Request */
 #define	CCS_FORCEHWREQOFF	0x00000020	/* Force HW Clock Request Off */
-#define CCS_ERSRC_REQ_MASK	0x00000700	/* external resource requests */
-#define CCS_ERSRC_REQ_SHIFT	8
 #define	CCS_ALPAVAIL		0x00010000	/* ALP is available */
 #define	CCS_HTAVAIL		0x00020000	/* HT is available */
-#define CCS_BP_ON_APL		0x00040000	/* RO: Backplane is running on ALP clock */
-#define CCS_BP_ON_HT		0x00080000	/* RO: Backplane is running on HT clock */
-#define CCS_ERSRC_STS_MASK	0x07000000	/* external resource status */
-#define CCS_ERSRC_STS_SHIFT	24
-
 #define	CCS0_HTAVAIL		0x00010000	/* HT avail in chipc and pcmcia on 4328a0 */
 #define	CCS0_ALPAVAIL		0x00020000	/* ALP avail in chipc and pcmcia on 4328a0 */
 
@@ -202,6 +190,6 @@
 #define	BISZ_DATAEND_IDX	4		/*	4: data end */
 #define	BISZ_BSSST_IDX		5		/*	5: bss start */
 #define	BISZ_BSSEND_IDX		6		/*	6: bss end */
-#define BISZ_SIZE		7		/* descriptor size in 32-bit integers */
+#define BISZ_SIZE		7		/* descriptor size in 32-bit intergers */
 
 #endif /* _HNDSOC_H */

@@ -1,24 +1,12 @@
-EXTRA_CFLAGS += -Dlinux -DLINUX -DBDC -DBCMDRIVER -DBCMDONGLEHOST -DDHDTHREAD \
-    -DDHD_GPL -DDHD_SCHED -DBCMSDIO -DBCMLXSDMMC -DBCMPLATFORM_BUS -DDHD_BCMEVENTS \
-    -DSHOW_EVENTS -DENABLE_DEEP_SLEEP -DSYSLSI_SPECIFIC
+EXTRA_CFLAGS += -Dlinux -DLINUX -DBDC -DBCMDRIVER -DBCMDONGLEHOST -DDHDTHREAD -DBCMWPA2 \
+    -DDHD_GPL -DDHD_SCHED -DBCMSDIO -DBCMLXSDMMC -DBCMPLATFORM_BUS -DDHD_BCMEVENTS      \
+    -DSHOW_EVENTS -DANDROID_SPECIFIC -DENABLE_DEEP_SLEEP
 
 ################ OPTIONAL FEATURES ############################################################
-#TO ENABLE OPTIONAL FEATURES UNCOMMENT THE CORRESPONDING FLAGS
+#TO ENALBLE OPTIONAL FEATURES UNCOMMENT THE CORRESPONDING FLAGS
 
-# For Samsung only.
+# For Samsung Aries only.
 EXTRA_CFLAGS += -DCUSTOMER_HW_SAMSUNG
-
-# To Enable Packet filter as White list instead of Black list 
-EXTRA_CFLAGS += -DWHITELIST_PKT_FILTER 
-
-# for Wi-Fi Direct
-#EXTRA_CFLAGS += -DUSE_WIFI_DIRECT -DDTIM_CNT1
-
-# for CCX Certification
-#EXTRA_CFLAGS += -DBCMCCX
-
-# Print out CHIP REV
-EXTRA_CFLAGS += -DCHECK_CHIP_REV
 
 # For MACID management
 ifeq ($(CONFIG_MACH_ANCORA),y)
@@ -29,19 +17,19 @@ else
 EXTRA_CFLAGS += -DWRITE_MACADDR
 endif
 
-# SDIO_ISR_THREAD is mutually exclusive with OOB_INTR_ONLY
+# For AUTH time patch
+# EXTRA_CFLAGS += -DAUTH_TIME_PATCH
+
+# Check if this is required. SDIO_ISR_THREAD is mutually exclusive with OOB_INTR_ONLY
 #EXTRA_CFLAGS += -DSDIO_ISR_THREAD
 
 # For OOB only
 EXTRA_CFLAGS += -DOOB_INTR_ONLY
 
 # For HW_OOB
-#EXTRA_CFLAGS += -DHW_OOB
+EXTRA_CFLAGS += -DHW_OOB
 
-# For SDIO Error Recovery
-EXTRA_CFLAGS += -DMMC_SDIO_ABORT
-
-# For SOFTAP
+# FOR SOFTAP
 EXTRA_CFLAGS += -DSOFTAP
 
 # For Debug
@@ -50,40 +38,40 @@ EXTRA_CFLAGS += -DDHD_DEBUG -DSRCBASE=\"$(src)/src\"
 # HOST WAKEUP
 EXTRA_CFLAGS += -DBCM_HOSTWAKE
 
-# STATIC MEMORY ALLOCATION FEATURE
+#STATIC MEMORY ALLOCATION FEATURE
 EXTRA_CFLAGS += -DDHD_USE_STATIC_BUF
+EXTRA_CFLAGS += -DOTHER_STATIC_BUF
 
-# Disable PowerSave mode for OTA or certification test
-# EXTRA_CFLAGS += -DBCMDISABLE_PM
-EXTRA_CFLAGS += -DCONFIG_CONTROL_PM
+EXTRA_CFLAGS += -DEMBEDDED_PLATFORM
 
-# P2P ENABLE
-#EXTRA_CFLAGS += -DWLP2P
+EXTRA_CFLAGS += -DARP_OFFLOAD_SUPPORT
+EXTRA_CFLAGS += -DPKT_FILTER_SUPPORT
+#Disable TPC feature for FCC
+#EXTRA_CFLAGS += -DFCC_CERT
 
-# BTAMP
-EXTRA_CFLAGS += -DWLBTAMP
-EXTRA_CFLAGS += -DDHD_BTAMP_DBG
+#Disable PowerSave mode for OTA or certification test
+#EXTRA_CFLAGS += -DBCMDISABLE_PM
+
+# Trigger first broadscan in driver
+EXTRA_CFLAGS += -DCONFIG_FIRST_SCAN
 
 # COMBO SCAN
 EXTRA_CFLAGS += -DCSCAN
 
-# For Keepalive
-#EXTRA_CFLAGS += -DUSE_KEEP_ALIVE
+# For CCKM support
+EXTRA_CFLAGS += -DBCMCCX
 
-# Packet Filter
-EXTRA_CFLAGS += -DPKT_FILTER_SUPPORT
+# For Debug
+#EXTRA_CFLAGS += -DBCMDBG_EVENT
 
-# ARP offloading
-EXTRA_CFLAGS += -DARP_OFFLOAD_SUPPORT
+# FW Debug Trace
+#EXTRA_CFLAGS += -DUSE_FW_TRACE
 
-# 2.4G only scan for the initial broad scan
-EXTRA_CFLAGS += -DUSE_INITIAL_2G_SCAN
+# OKC
+EXTRA_CFLAGS += -DUSE_OKC
 
-#MobileAP fw_reload
-EXTRA_CFLAGS += -DMOBILEAP_RELOAD
-
-# For Wi-Fi Roaming
-EXTRA_CFLAGS += -DROAM_ENABLE
+# Keep Alive
+EXTRA_CFLAGS += -DUSE_KEEP_ALIVE
 
 ###############################################################################################
 
@@ -98,7 +86,6 @@ EXTRA_LDFLAGS += --strip-debug
 
 KBUILD_CFLAGS += -I$(LINUXDIR)/include -I$(shell pwd)
 
-#obj-$(CONFIG_BROADCOM_WIFI)-m	+= dhd.o
 obj-m	+= dhd.o
 
 dhd-y := src/dhd/sys/dhd_linux.o \
@@ -108,7 +95,6 @@ dhd-y := src/dhd/sys/dhd_linux.o \
          src/dhd/sys/dhd_sdio.o \
          src/dhd/sys/dhd_custom_gpio.o \
          src/dhd/sys/dhd_custom_sec.o \
-         src/dhd/sys/dhd_bta.o \
          src/shared/aiutils.o \
          src/shared/bcmutils.o \
          src/shared/bcmwifi.o \
@@ -116,28 +102,25 @@ dhd-y := src/dhd/sys/dhd_linux.o \
          src/shared/linux_osl.o \
          src/shared/sbutils.o \
          src/shared/siutils.o \
-         src/shared/bcmevent.o \
          src/bcmsdio/sys/bcmsdh_sdmmc.o \
          src/bcmsdio/sys/bcmsdh.o \
          src/bcmsdio/sys/bcmsdh_linux.o \
          src/bcmsdio/sys/bcmsdh_sdmmc_linux.o \
          src/wl/sys/wl_iw.o
-
 all:
 	@echo "$(MAKE) --no-print-directory -C $(KDIR) SUBDIRS=$(CURDIR) modules"
 	@$(MAKE) --no-print-directory -C $(KDIR) \
 		SUBDIRS=$(CURDIR) modules
 
 clean: 
-	rm -rf *.o *.ko *.mod.c *~ .*.cmd Module.symvers modules.order .tmp_versions	\
-	 	 src/dhd/sys/dhd_linux.o \
+	rm -rf *.o *.o.cmd *.ko *.mod.c *~ .*.cmd Module.symvers modules.order .tmp_versions	\
+         src/dhd/sys/dhd_linux.o \
          src/dhd/sys/dhd_common.o \
          src/dhd/sys/dhd_cdc.o \
          src/dhd/sys/dhd_linux_sched.o\
          src/dhd/sys/dhd_sdio.o \
          src/dhd/sys/dhd_custom_gpio.o \
          src/dhd/sys/dhd_custom_sec.o \
-         src/dhd/sys/dhd_bta.o \
          src/shared/aiutils.o \
          src/shared/bcmutils.o \
          src/shared/bcmwifi.o \
@@ -145,7 +128,6 @@ clean:
          src/shared/linux_osl.o \
          src/shared/sbutils.o \
          src/shared/siutils.o \
-         src/shared/bcmevent.o \
          src/bcmsdio/sys/bcmsdh_sdmmc.o \
          src/bcmsdio/sys/bcmsdh.o \
          src/bcmsdio/sys/bcmsdh_linux.o \
@@ -158,7 +140,6 @@ clean:
          src/dhd/sys/.dhd_sdio.o.cmd \
          src/dhd/sys/.dhd_custom_gpio.o.cmd \
          src/dhd/sys/.dhd_custom_sec.o.cmd \
-         src/dhd/sys/.dhd_bta.o.cmd \
          src/shared/.aiutils.o.cmd \
          src/shared/.bcmutils.o.cmd \
          src/shared/.bcmwifi.o.cmd \
@@ -166,7 +147,6 @@ clean:
          src/shared/.linux_osl.o.cmd \
          src/shared/.sbutils.o.cmd \
          src/shared/.siutils.o.cmd \
-         src/shared/.bcmevent.o.cmd \
          src/bcmsdio/sys/.bcmsdh_sdmmc.o.cmd \
          src/bcmsdio/sys/.bcmsdh.o.cmd \
          src/bcmsdio/sys/.bcmsdh_linux.o.cmd \

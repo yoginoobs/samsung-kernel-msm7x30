@@ -2,9 +2,9 @@
  * Common stats definitions for clients of dongle
  * ports
  *
- * Copyright (C) 1999-2011, Broadcom Corporation
+ * Copyright (C) 1999-2010, Broadcom Corporation
  * 
- *         Unless you and Broadcom execute a separate written software license
+ *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
@@ -22,7 +22,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dngl_stats.h,v 1.5 2008/06/02 16:56:20 Exp $
+ * $Id: dngl_stats.h,v 1.2.140.3 2008/05/26 16:52:08 Exp $
  */
 
 #ifndef _dngl_stats_h_

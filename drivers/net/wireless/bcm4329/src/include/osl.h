@@ -1,9 +1,9 @@
 /*
  * OS Abstraction Layer
  *
- * Copyright (C) 1999-2011, Broadcom Corporation
+ * Copyright (C) 1999-2010, Broadcom Corporation
  * 
- *         Unless you and Broadcom execute a separate written software license
+ *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
@@ -20,48 +20,36 @@
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
- *
- * $Id: osl.h,v 13.44.96.1 2010/05/20 11:09:18 Exp $
+ * $Id: osl.h,v 13.37.32.1 2008/11/20 00:51:15 Exp $
  */
+
 
 #ifndef _osl_h_
 #define _osl_h_
 
-/* osl handle type forward declaration */
+
 typedef struct osl_info osl_t;
 typedef struct osl_dmainfo osldma_t;
 
-#define OSL_PKTTAG_SZ	32 /* Size of PktTag */
+#define OSL_PKTTAG_SZ	32 
 
-/* Drivers use PKTFREESETCB to register a callback function when a packet is freed by OSL */
+
 typedef void (*pktfree_cb_fn_t)(void *ctx, void *pkt, unsigned int status);
-
 
 #include <linux_osl.h>
 
-#ifndef PKTDBG_TRACE
-#define PKTDBG_TRACE(osh, pkt, bit)
-#endif
 
-/* --------------------------------------------------------------------------
-** Register manipulation macros.
-*/
+
 
 #define	SET_REG(osh, r, mask, val)	W_REG((osh), (r), ((R_REG((osh), r) & ~(mask)) | (val)))
 
 #ifndef AND_REG
 #define AND_REG(osh, r, v)		W_REG(osh, (r), R_REG(osh, r) & (v))
-#endif   /* !AND_REG */
+#endif   
 
 #ifndef OR_REG
 #define OR_REG(osh, r, v)		W_REG(osh, (r), R_REG(osh, r) | (v))
-#endif   /* !OR_REG */
+#endif   
 
-#if !defined(OSL_SYSUPTIME)
-#define OSL_SYSUPTIME() (0)
-#define OSL_SYSUPTIME_SUPPORT FALSE
-#else
-#define OSL_SYSUPTIME_SUPPORT TRUE
-#endif /* OSL_SYSUPTIME */
 
-#endif	/* _osl_h_ */
+#endif	

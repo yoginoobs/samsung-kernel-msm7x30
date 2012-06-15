@@ -2,9 +2,9 @@
  * Misc utility routines for accessing chip-specific features
  * of the SiliconBackplane-based Broadcom chips.
  *
- * Copyright (C) 1999-2011, Broadcom Corporation
+ * Copyright (C) 1999-2010, Broadcom Corporation
  * 
- *         Unless you and Broadcom execute a separate written software license
+ *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
@@ -22,7 +22,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: sbutils.c,v 1.687.2.1 2010/11/29 20:21:56 Exp $
+ * $Id: sbutils.c,v 1.662.4.10.2.7.4.2 2010/04/19 05:48:48 Exp $
  */
 
 #include <typedefs.h>
@@ -37,7 +37,6 @@
 #include <sbpcmcia.h>
 
 #include "siutils_priv.h"
-
 
 /* local prototypes */
 static uint _sb_coreidx(si_info_t *sii, uint32 sba);
@@ -112,10 +111,17 @@ sb_write_sbreg(si_info_t *sii, volatile uint32 *sbr, uint32 v)
 	}
 
 	if (BUSTYPE(sii->pub.bustype) == PCMCIA_BUS) {
+#ifdef IL_BIGENDIAN
+		dummy = R_REG(sii->osh, sbr);
+		W_REG(sii->osh, ((volatile uint16 *)sbr + 1), (uint16)((v >> 16) & 0xffff));
+		dummy = R_REG(sii->osh, sbr);
+		W_REG(sii->osh, (volatile uint16 *)sbr, (uint16)(v & 0xffff));
+#else
 		dummy = R_REG(sii->osh, sbr);
 		W_REG(sii->osh, (volatile uint16 *)sbr, (uint16)(v & 0xffff));
 		dummy = R_REG(sii->osh, sbr);
 		W_REG(sii->osh, ((volatile uint16 *)sbr + 1), (uint16)((v >> 16) & 0xffff));
+#endif	/* IL_BIGENDIAN */
 	} else
 		W_REG(sii->osh, sbr, v);
 
@@ -136,28 +142,6 @@ sb_coreid(si_t *sih)
 	sb = REGS2SB(sii->curmap);
 
 	return ((R_SBREG(sii, &sb->sbidhigh) & SBIDH_CC_MASK) >> SBIDH_CC_SHIFT);
-}
-
-uint
-sb_intflag(si_t *sih)
-{
-	si_info_t *sii;
-	void *corereg;
-	sbconfig_t *sb;
-	uint origidx, intflag, intr_val = 0;
-
-	sii = SI_INFO(sih);
-
-	INTR_OFF(sii, intr_val);
-	origidx = si_coreidx(sih);
-	corereg = si_setcore(sih, CC_CORE_ID, 0);
-	ASSERT(corereg != NULL);
-	sb = REGS2SB(corereg);
-	intflag = R_SBREG(sii, &sb->sbflagst);
-	sb_setcoreidx(sih, origidx);
-	INTR_RESTORE(sii, intr_val);
-
-	return intflag;
 }
 
 uint
@@ -196,7 +180,7 @@ _sb_coreidx(si_info_t *sii, uint32 sba)
 	uint i;
 
 	for (i = 0; i < sii->numcores; i ++)
-		if (sba == sii->coresba[i])
+		if (sba == sii->common_info->coresba[i])
 			return i;
 	return BADIDX;
 }
@@ -386,16 +370,16 @@ sb_corereg(si_t *sih, uint coreidx, uint regoff, uint mask, uint val)
 		/* If internal bus, we can always get at everything */
 		fast = TRUE;
 		/* map if does not exist */
-		if (!sii->regs[coreidx]) {
-			sii->regs[coreidx] = REG_MAP(sii->coresba[coreidx],
-			                            SI_CORE_SIZE);
-			ASSERT(GOODREGS(sii->regs[coreidx]));
+		if (!sii->common_info->regs[coreidx]) {
+			sii->common_info->regs[coreidx] =
+			    REG_MAP(sii->common_info->coresba[coreidx], SI_CORE_SIZE);
+			ASSERT(GOODREGS(sii->common_info->regs[coreidx]));
 		}
-		r = (uint32 *)((uchar *)sii->regs[coreidx] + regoff);
+		r = (uint32 *)((uchar *)sii->common_info->regs[coreidx] + regoff);
 	} else if (BUSTYPE(sii->pub.bustype) == PCI_BUS) {
 		/* If pci/pcie, we can get at pci/pcie regs and on newer cores to chipc */
 
-		if ((sii->coreid[coreidx] == CC_CORE_ID) && SI_FAST(sii)) {
+		if ((sii->common_info->coreid[coreidx] == CC_CORE_ID) && SI_FAST(sii)) {
 			/* Chipc registers are mapped at 12KB */
 
 			fast = TRUE;
@@ -486,23 +470,24 @@ _sb_scan(si_info_t *sii, uint32 sba, void *regs, uint bus, uint32 sbba, uint num
 	 * Core addresses must be contiguous on each bus.
 	 */
 	for (i = 0, next = sii->numcores; i < numcores && next < SB_BUS_MAXCORES; i++, next++) {
-		sii->coresba[next] = sbba + (i * SI_CORE_SIZE);
+		sii->common_info->coresba[next] = sbba + (i * SI_CORE_SIZE);
 
 		/* keep and reuse the initial register mapping */
-		if ((BUSTYPE(sii->pub.bustype) == SI_BUS) && (sii->coresba[next] == sba)) {
-			SI_VMSG(("_sb_scan: reuse mapped regs %p for core %u\n", regs, next));
-			sii->regs[next] = regs;
+		if ((BUSTYPE(sii->pub.bustype) == SI_BUS) &&
+			(sii->common_info->coresba[next] == sba)) {
+			SI_MSG(("_sb_scan: reuse mapped regs %p for core %u\n", regs, next));
+			sii->common_info->regs[next] = regs;
 		}
 
 		/* change core to 'next' and read its coreid */
 		sii->curmap = _sb_setcoreidx(sii, next);
 		sii->curidx = next;
 
-		sii->coreid[next] = sb_coreid(&sii->pub);
+		sii->common_info->coreid[next] = sb_coreid(&sii->pub);
 
 		/* core specific processing... */
 		/* chipc provides # cores */
-		if (sii->coreid[next] == CC_CORE_ID) {
+		if (sii->common_info->coreid[next] == CC_CORE_ID) {
 			chipcregs_t *cc = (chipcregs_t *)sii->curmap;
 			uint32 ccrev = sb_corerev(&sii->pub);
 
@@ -512,7 +497,7 @@ _sb_scan(si_info_t *sii, uint32 sba, void *regs, uint bus, uint32 sbba, uint num
 				        CID_CC_SHIFT;
 			else {
 				/* Older chips */
-				uint chip = CHIPID(sii->pub.chip);
+				uint chip = sii->pub.chip;
 
 				if (chip == BCM4306_CHIP_ID)	/* < 4306c0 */
 					numcores = 6;
@@ -527,11 +512,11 @@ _sb_scan(si_info_t *sii, uint32 sba, void *regs, uint bus, uint32 sbba, uint num
 					numcores = 1;
 				}
 			}
-			SI_VMSG(("_sb_scan: there are %u cores in the chip %s\n", numcores,
+			SI_MSG(("_sb_scan: there are %u cores in the chip %s\n", numcores,
 				sii->pub.issim ? "QT" : ""));
 		}
 		/* scan bridged SB(s) and add results to the end of the list */
-		else if (sii->coreid[next] == OCP_CORE_ID) {
+		else if (sii->common_info->coreid[next] == OCP_CORE_ID) {
 			sbconfig_t *sb = REGS2SB(sii->curmap);
 			uint32 nsbba = R_SBREG(sii, &sb->sbadmatch1);
 			uint nsbcc;
@@ -564,12 +549,8 @@ sb_scan(si_t *sih, void *regs, uint devid)
 {
 	si_info_t *sii;
 	uint32 origsba;
-	sbconfig_t *sb;
 
 	sii = SI_INFO(sih);
-	sb = REGS2SB(sii->curmap);
-
-	sii->pub.socirev = (R_SBREG(sii, &sb->sbidlow) & SBIDL_RV_MASK) >> SBIDL_RV_SHIFT;
 
 	/* Save the current core info and validate it later till we know
 	 * for sure what is good and what is bad.
@@ -613,17 +594,17 @@ sb_setcoreidx(si_t *sih, uint coreidx)
 static void *
 _sb_setcoreidx(si_info_t *sii, uint coreidx)
 {
-	uint32 sbaddr = sii->coresba[coreidx];
+	uint32 sbaddr = sii->common_info->coresba[coreidx];
 	void *regs;
 
 	switch (BUSTYPE(sii->pub.bustype)) {
 	case SI_BUS:
 		/* map new one */
-		if (!sii->regs[coreidx]) {
-			sii->regs[coreidx] = REG_MAP(sbaddr, SI_CORE_SIZE);
-			ASSERT(GOODREGS(sii->regs[coreidx]));
+		if (!sii->common_info->regs[coreidx]) {
+			sii->common_info->regs[coreidx] = REG_MAP(sbaddr, SI_CORE_SIZE);
+			ASSERT(GOODREGS(sii->common_info->regs[coreidx]));
 		}
-		regs = sii->regs[coreidx];
+		regs = sii->common_info->regs[coreidx];
 		break;
 
 	case PCI_BUS:
@@ -645,11 +626,11 @@ _sb_setcoreidx(si_info_t *sii, uint coreidx)
 	case SPI_BUS:
 	case SDIO_BUS:
 		/* map new one */
-		if (!sii->regs[coreidx]) {
-			sii->regs[coreidx] = (void *)(uintptr)sbaddr;
-			ASSERT(GOODREGS(sii->regs[coreidx]));
+		if (!sii->common_info->regs[coreidx]) {
+			sii->common_info->regs[coreidx] = (void *)(uintptr)sbaddr;
+			ASSERT(GOODREGS(sii->common_info->regs[coreidx]));
 		}
-		regs = sii->regs[coreidx];
+		regs = sii->common_info->regs[coreidx];
 		break;
 
 
@@ -751,7 +732,6 @@ sb_commit(si_t *sih)
 	/* switch over to chipcommon core if there is one, else use pci */
 	if (sii->pub.ccrev != NOREV) {
 		chipcregs_t *ccregs = (chipcregs_t *)si_setcore(sih, CC_CORE_ID, 0);
-		ASSERT(ccregs != NULL);
 
 		/* do the buffer registers update */
 		W_REG(sii->osh, &ccregs->broadcastaddress, SB_COMMIT);
@@ -865,6 +845,38 @@ sb_core_reset(si_t *sih, uint32 bits, uint32 resetbits)
 	W_SBREG(sii, &sb->sbtmstatelow, ((bits | SICF_CLOCK_EN) << SBTML_SICF_SHIFT));
 	dummy = R_SBREG(sii, &sb->sbtmstatelow);
 	OSL_DELAY(1);
+}
+
+void
+sb_core_tofixup(si_t *sih)
+{
+	si_info_t *sii;
+	sbconfig_t *sb;
+
+	sii = SI_INFO(sih);
+
+	if ((BUSTYPE(sii->pub.bustype) != PCI_BUS) || PCIE(sii) ||
+	    (PCI(sii) && (sii->pub.buscorerev >= 5)))
+		return;
+
+	ASSERT(GOODREGS(sii->curmap));
+	sb = REGS2SB(sii->curmap);
+
+	if (BUSTYPE(sii->pub.bustype) == SI_BUS) {
+		SET_SBREG(sii, &sb->sbimconfiglow,
+		          SBIMCL_RTO_MASK | SBIMCL_STO_MASK,
+		          (0x5 << SBIMCL_RTO_SHIFT) | 0x3);
+	} else {
+		if (sb_coreid(sih) == PCI_CORE_ID) {
+			SET_SBREG(sii, &sb->sbimconfiglow,
+			          SBIMCL_RTO_MASK | SBIMCL_STO_MASK,
+			          (0x3 << SBIMCL_RTO_SHIFT) | 0x2);
+		} else {
+			SET_SBREG(sii, &sb->sbimconfiglow, (SBIMCL_RTO_MASK | SBIMCL_STO_MASK), 0);
+		}
+	}
+
+	sb_commit(sih);
 }
 
 /*

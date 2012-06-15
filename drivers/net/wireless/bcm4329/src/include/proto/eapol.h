@@ -7,7 +7,7 @@
  *
  * Copyright (C) 2002 Broadcom Corporation
  *
- * $Id: eapol.h,v 9.23.86.1 2010/09/02 18:09:39 Exp $
+ * $Id: eapol.h,v 9.18.260.1.2.1.6.6 2009/04/08 05:00:08 Exp $
  */
 
 #ifndef _eapol_h_
@@ -20,7 +20,7 @@
 /* This marks the start of a packed structure section. */
 #include <packed_section_start.h>
 
-#include <bcmcrypto/aeskeywrap.h>
+#define AKW_BLOCK_LEN	8	/* The only def we need here */
 
 /* EAPOL for 802.3/Ethernet */
 typedef struct {
@@ -81,8 +81,8 @@ typedef BWL_PRE_PACKED_STRUCT struct {
 #define EAPOL_WPA_KEY_REPLAY_LEN	8
 #define EAPOL_WPA_KEY_NONCE_LEN		32
 #define EAPOL_WPA_KEY_IV_LEN		16
-#define EAPOL_WPA_KEY_RSC_LEN		8
 #define EAPOL_WPA_KEY_ID_LEN		8
+#define EAPOL_WPA_KEY_RSC_LEN		8
 #define EAPOL_WPA_KEY_MIC_LEN		16
 #define EAPOL_WPA_KEY_DATA_LEN		(EAPOL_WPA_MAX_KEY_SIZE + AKW_BLOCK_LEN)
 #define EAPOL_WPA_MAX_KEY_SIZE		32
@@ -107,7 +107,6 @@ typedef BWL_PRE_PACKED_STRUCT struct {
 /* WPA/802.11i/WPA2 KEY KEY_INFO bits */
 #define WPA_KEY_DESC_V1		0x01
 #define WPA_KEY_DESC_V2		0x02
-#define WPA_KEY_DESC_V3		0x03
 #define WPA_KEY_PAIRWISE	0x08
 #define WPA_KEY_INSTALL		0x40
 #define WPA_KEY_ACK		0x80

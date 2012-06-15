@@ -2,9 +2,9 @@
  * SDIO spec header file
  * Protocol and standard (common) device definitions
  *
- * Copyright (C) 1999-2011, Broadcom Corporation
+ * Copyright (C) 1999-2010, Broadcom Corporation
  * 
- *         Unless you and Broadcom execute a separate written software license
+ *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
@@ -22,7 +22,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: sdio.h,v 13.27.14.1 2010/09/07 13:37:45 Exp $
+ * $Id: sdio.h,v 13.24.4.1.4.1.16.1 2009/08/12 01:08:02 Exp $
  */
 
 #ifndef	_SDIO_H
@@ -80,12 +80,6 @@ typedef volatile struct {
 #define SDIOD_CCCR_POWER_CONTROL	0x12
 #define SDIOD_CCCR_SPEED_CONTROL	0x13
 
-/* #ifdef SDHOST3 */
-#define SDIOD_CCCR_UHSI_SUPPORT		0x14
-#define SDIOD_CCCR_DRIVER_STRENGTH	0x15
-#define SDIOD_CCCR_INTR_EXTN		0x16
-/* #endif SDHOST3 */
-
 /* Broadcom extensions (corerev >= 1) */
 #define SDIOD_CCCR_BRCM_SEPINT		0xf2
 
@@ -142,33 +136,6 @@ typedef volatile struct {
 /* speed_control (control device entry into high-speed clocking mode) */
 #define SDIO_SPEED_SHS		0x01	/* supports high-speed [clocking] mode (RO) */
 #define SDIO_SPEED_EHS		0x02	/* enable high-speed [clocking] mode (RW) */
-
-/* #ifdef SDHOST3 */
-/* for setting bus speed in card: 0x13h */
-#define SDIO_BUS_SPEED_UHSISEL_M	BITFIELD_MASK(3)
-#define SDIO_BUS_SPEED_UHSISEL_S	1
-
-/* for getting bus speed cap in card: 0x14h */
-#define SDIO_BUS_SPEED_UHSICAP_M	BITFIELD_MASK(3)
-#define SDIO_BUS_SPEED_UHSICAP_S	0
-
-/* for getting driver type CAP in card: 0x15h */
-#define SDIO_BUS_DRVR_TYPE_CAP_M	BITFIELD_MASK(3)
-#define SDIO_BUS_DRVR_TYPE_CAP_S	0
-
-/* for setting driver type selection in card: 0x15h */
-#define SDIO_BUS_DRVR_TYPE_SEL_M	BITFIELD_MASK(2)
-#define SDIO_BUS_DRVR_TYPE_SEL_S	4
-
-/* for getting async int support in card: 0x16h */
-#define SDIO_BUS_ASYNCINT_CAP_M	BITFIELD_MASK(1)
-#define SDIO_BUS_ASYNCINT_CAP_S	0
-
-/* for setting async int selection in card: 0x16h */
-#define SDIO_BUS_ASYNCINT_SEL_M	BITFIELD_MASK(1)
-#define SDIO_BUS_ASYNCINT_SEL_S	1
-
-/* #endif SDHOST3 */
 
 /* brcm sepint */
 #define SDIO_SEPINT_MASK	0x01	/* route sdpcmdev intr onto separate pad (chip-specific) */
@@ -386,11 +353,6 @@ typedef volatile struct {
 #define SDIOH_CMD_53		53
 #define SDIOH_CMD_59		59
 
-/* #ifdef SDHOST3 */
-#define SDIOH_CMD_11		11
-#define SDIOH_CMD_19		19
-/* #endif SDHOST3 */
-
 /* SDIO Command Responses */
 #define SDIOH_RSP_NONE		0
 #define SDIOH_RSP_R1		1
@@ -414,11 +376,6 @@ typedef volatile struct {
 
 #define CMD5_OCR_M		BITFIELD_MASK(24)
 #define CMD5_OCR_S		0
-
-/* #ifdef SDHOST3 */
-#define CMD5_S18R_M		BITFIELD_MASK(1)
-#define CMD5_S18R_S		24
-/* #endif SDHOST3 */
 
 #define CMD7_RCA_M		BITFIELD_MASK(16)
 #define CMD7_RCA_S		16
@@ -458,12 +415,6 @@ typedef volatile struct {
  */
 #define RSP4_IO_OCR_M		BITFIELD_MASK(24) /* Bits [23:0]  - Card's OCR Bits [23:0] */
 #define RSP4_IO_OCR_S		0
-
-/* #ifdef SDHOST3 */
-#define RSP4_S18A_M			BITFIELD_MASK(1) /* Bits [23:0]  - Card's OCR Bits [23:0] */
-#define RSP4_S18A_S			24
-/* #endif SDHOST3 */
-
 #define RSP4_STUFF_M		BITFIELD_MASK(3)  /* Bits [26:24] - Stuff bits */
 #define RSP4_STUFF_S		24
 #define RSP4_MEM_PRESENT_M	BITFIELD_MASK(1)  /* Bit  27      - Memory present */
@@ -611,9 +562,5 @@ typedef volatile struct {
 
 #define SDIOH_XFER_TYPE_READ    SD_IO_OP_READ
 #define SDIOH_XFER_TYPE_WRITE   SD_IO_OP_WRITE
-
-/* command issue options */
-#define CMD_OPTION_DEFAULT	0
-#define CMD_OPTION_TUNING	1
 
 #endif /* _SDIO_H */

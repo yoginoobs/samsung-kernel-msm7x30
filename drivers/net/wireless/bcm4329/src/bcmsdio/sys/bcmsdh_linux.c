@@ -1,9 +1,9 @@
 /*
  * SDIO access interface for drivers - linux specific (pci only)
  *
- * Copyright (C) 1999-2011, Broadcom Corporation
+ * Copyright (C) 1999-2010, Broadcom Corporation
  * 
- *         Unless you and Broadcom execute a separate written software license
+ *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsdh_linux.c,v 1.72.6.5 2010/12/23 01:13:15 Exp $
+ * $Id: bcmsdh_linux.c,v 1.42.10.10.2.14.4.2 2010/09/15 00:30:11 Exp $
  */
 
 /**
@@ -192,13 +192,11 @@ int bcmsdh_probe(struct device *dev)
 
 #if defined(OOB_INTR_ONLY)
 #ifdef HW_OOB
-	irq_flags =
+	irq_flags = \
 		IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL | IORESOURCE_IRQ_SHAREABLE;
 #else
-	 irq_flags = IRQF_TRIGGER_FALLING;
+	 irq_flags = IRQF_TRIGGER_RISING;
 #endif /* HW_OOB */
-
-	/* Get CUSTOMER's specific OOB IRQ parametres as Irq number as Irq type */
 	irq = dhd_customer_oob_irq_map(&irq_flags);
 	if  (irq < 0) {
 		SDLX_MSG(("%s: Host irq is not defined\n", __FUNCTION__));
@@ -357,7 +355,7 @@ extern uint sd_pci_slot;	/* Force detection to a particular PCI */
 							/* usable at a time */
 							/* Upper word is bus number, */
 							/* lower word is slot number */
-							/* Default value of 0xffffffff turns this */
+							/* Default value of 0xFFFFffff turns this */
 							/* off */
 module_param(sd_pci_slot, uint, 0);
 
@@ -382,19 +380,20 @@ bcmsdh_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 			PCI_SLOT(pdev->devfn) != (sd_pci_slot&0xffff)) {
 			SDLX_MSG(("%s: %s: bus %X, slot %X, vend %X, dev %X\n",
 				__FUNCTION__,
-				bcmsdh_chipmatch(pdev->vendor, pdev->device)
-				?"Found compatible SDIOHC"
-				:"Probing unknown device",
-				pdev->bus->number, PCI_SLOT(pdev->devfn), pdev->vendor,
-				pdev->device));
+			          bcmsdh_chipmatch(pdev->vendor, pdev->device) ?
+			          "Found compatible SDIOHC" :
+			          "Probing unknown device",
+			          pdev->bus->number, PCI_SLOT(pdev->devfn),
+			          pdev->vendor, pdev->device));
 			return -ENODEV;
 		}
 		SDLX_MSG(("%s: %s: bus %X, slot %X, vendor %X, device %X (good PCI location)\n",
 			__FUNCTION__,
-			bcmsdh_chipmatch(pdev->vendor, pdev->device)
-			?"Using compatible SDIOHC"
-			:"WARNING, forced use of unkown device",
-			pdev->bus->number, PCI_SLOT(pdev->devfn), pdev->vendor, pdev->device));
+		          bcmsdh_chipmatch(pdev->vendor, pdev->device) ?
+		          "Using compatible SDIOHC" :
+		          "WARNING, forced use of unkown device",
+		          pdev->bus->number, PCI_SLOT(pdev->devfn),
+		          pdev->vendor, pdev->device));
 	}
 
 	if ((pdev->vendor == VENDOR_TI) && ((pdev->device == PCIXX21_FLASHMEDIA_ID) ||
@@ -482,11 +481,10 @@ bcmsdh_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	/* error handling */
 err:
-	if (sdhc) {
 	if (sdhc->sdh)
 		bcmsdh_detach(sdhc->osh, sdhc->sdh);
+	if (sdhc)
 		MFREE(osh, sdhc, sizeof(bcmsdh_hc_t));
-	}
 	if (osh)
 		osl_detach(osh);
 	return -ENODEV;
@@ -603,20 +601,17 @@ void bcmsdh_oob_intr_set(bool enable)
 static irqreturn_t wlan_oob_irq(int irq, void *dev_id)
 {
 	dhd_pub_t *dhdp;
-	
+
 	dhdp = (dhd_pub_t *)dev_get_drvdata(sdhcinfo->dev);
 
-#if !defined(CUSTOMER_HW_SAMSUNG)
 	bcmsdh_oob_intr_set(0);
-#endif
 
 	if (dhdp == NULL) {
-#if defined(CUSTOMER_HW_SAMSUNG)
-		disable_irq_nosync(sdhcinfo->oob_irq);
-#endif
 		SDLX_MSG(("Out of band GPIO interrupt fired way too early\n"));
 		return IRQ_HANDLED;
 	}
+
+	WAKE_LOCK_TIMEOUT(dhdp, WAKE_LOCK_TMOUT, 25);
 
 	dhdsdio_isr((void *)dhdp->bus);
 
@@ -627,21 +622,23 @@ int bcmsdh_register_oob_intr(void * dhdp)
 {
 	int error = 0;
 
-	SDLX_MSG(("%s Enter \n", __FUNCTION__));
+	SDLX_MSG(("%s Enter\n", __FUNCTION__));
 
-	/* IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL | IORESOURCE_IRQ_SHAREABLE; */
+/* Example of  HW_OOB for HW2: please refer to your host  specifiction */
+/* sdhcinfo->oob_flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL | IORESOURCE_IRQ_SHAREABLE; */
 
-	dev_set_drvdata(sdhcinfo->dev, dhdp);
+    dev_set_drvdata(sdhcinfo->dev,dhdp);
 
 	if (!sdhcinfo->oob_irq_registered) {
-		SDLX_MSG(("%s IRQ=%d Type=%X \n", __FUNCTION__,
-			(int)sdhcinfo->oob_irq, (int)sdhcinfo->oob_flags));
-		/* Refer to customer Host IRQ docs about proper irqflags definition */
-		error = request_irq(sdhcinfo->oob_irq, wlan_oob_irq, sdhcinfo->oob_flags,
-			"bcmsdh_sdmmc", NULL);
-		if (error)
-			return -ENODEV;
-#ifndef CONFIG_MACH_S5PC110_ARIES
+		SDLX_MSG(("%s IRQ=%d Type=%X \n", __FUNCTION__, \
+				(int)sdhcinfo->oob_irq, (int)sdhcinfo->oob_flags));
+	/* Refer to customer Host IRQ docs about proper irqflags definition */
+	error = request_irq(sdhcinfo->oob_irq, wlan_oob_irq, sdhcinfo->oob_flags,
+		"bcmsdh_sdmmc", NULL);
+	if (error)
+		return -ENODEV;
+
+#if 1
 		set_irq_wake(sdhcinfo->oob_irq, 1);
 #endif
 		sdhcinfo->oob_irq_registered = TRUE;
@@ -653,15 +650,12 @@ int bcmsdh_register_oob_intr(void * dhdp)
 void bcmsdh_unregister_oob_intr(void)
 {
 	SDLX_MSG(("%s: Enter\n", __FUNCTION__));
-
-	if (sdhcinfo->oob_irq_registered == TRUE) {
-#ifndef CONFIG_MACH_S5PC110_ARIES
-		set_irq_wake(sdhcinfo->oob_irq, 0);
+#if 1
+	set_irq_wake(sdhcinfo->oob_irq, 0);
 #endif
-		disable_irq_nosync(sdhcinfo->oob_irq);	/* just in case.. */
-		free_irq(sdhcinfo->oob_irq, NULL);
-		sdhcinfo->oob_irq_registered = FALSE;
-	}
+	disable_irq(sdhcinfo->oob_irq);	/* just in case.. */
+	free_irq(sdhcinfo->oob_irq, NULL);
+	sdhcinfo->oob_irq_registered = FALSE;
 }
 #endif /* defined(OOB_INTR_ONLY) */
 /* Module parameters specific to each host-controller driver */
@@ -720,7 +714,6 @@ EXPORT_SYMBOL(bcmsdh_register);
 EXPORT_SYMBOL(bcmsdh_unregister);
 EXPORT_SYMBOL(bcmsdh_chipmatch);
 EXPORT_SYMBOL(bcmsdh_reset);
-EXPORT_SYMBOL(bcmsdh_waitlockfree);
 
 EXPORT_SYMBOL(bcmsdh_get_dstatus);
 EXPORT_SYMBOL(bcmsdh_cfg_read_word);

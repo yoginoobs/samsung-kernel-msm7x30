@@ -1,9 +1,9 @@
 /*
  * Debug/trace/assert driver definitions for Dongle Host Driver.
  *
- * Copyright (C) 1999-2011, Broadcom Corporation
+ * Copyright (C) 1999-2010, Broadcom Corporation
  * 
- *         Unless you and Broadcom execute a separate written software license
+ *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
@@ -21,15 +21,15 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_dbg.h,v 1.9.6.1 2010/12/22 23:47:24 Exp $
+ * $Id: dhd_dbg.h,v 1.5.6.2.4.2.14.10 2010/05/21 21:49:38 Exp $
  */
 
 #ifndef _dhd_dbg_
 #define _dhd_dbg_
 
-#ifdef DHD_DEBUG
+#if 0 //FIXME def DHD_DEBUG
 
-#define DHD_ERROR(args)		do {if (dhd_msg_level & DHD_ERROR_VAL) printf args;} while (0)
+#define DHD_ERROR(args)	    do {if (dhd_msg_level & DHD_ERROR_VAL) printf args;} while (0)
 #define DHD_TRACE(args)		do {if (dhd_msg_level & DHD_TRACE_VAL) printf args;} while (0)
 #define DHD_INFO(args)		do {if (dhd_msg_level & DHD_INFO_VAL)  printf args;} while (0)
 #define DHD_DATA(args)		do {if (dhd_msg_level & DHD_DATA_VAL)  printf args;} while (0)
@@ -42,10 +42,6 @@
 #define DHD_EVENT(args)		do {if (dhd_msg_level & DHD_EVENT_VAL) printf args;} while (0)
 #define DHD_BTA(args)		do {if (dhd_msg_level & DHD_BTA_VAL)   printf args;} while (0)
 #define DHD_ISCAN(args)		do {if (dhd_msg_level & DHD_ISCAN_VAL) printf args;} while (0)
-#ifdef ARP_OFFLOAD_SUPPORT
-#define DHD_ARPOE(args)		do {if (dhd_msg_level & DHD_ARPOE_VAL) \
-					printf args; } while (0)
-#endif
 
 #define DHD_ERROR_ON()		(dhd_msg_level & DHD_ERROR_VAL)
 #define DHD_TRACE_ON()		(dhd_msg_level & DHD_TRACE_VAL)
@@ -60,14 +56,11 @@
 #define DHD_EVENT_ON()		(dhd_msg_level & DHD_EVENT_VAL)
 #define DHD_BTA_ON()		(dhd_msg_level & DHD_BTA_VAL)
 #define DHD_ISCAN_ON()		(dhd_msg_level & DHD_ISCAN_VAL)
-#ifdef ARP_OFFLOAD_SUPPORT
-#define DHD_ARPOE_ON()		(dhd_msg_level & DHD_ARPOE_VAL)
-#endif
 
-#else /* DHD_DEBUG */
+#else /* (defined BCMDBG) || (defined DHD_DEBUG) */
 
-#define DHD_ERROR(args)		printf args
-#define DHD_TRACE(args)
+#define DHD_ERROR(args)    	printf args
+#define DHD_TRACE(args)         
 #define DHD_INFO(args)
 #define DHD_DATA(args)
 #define DHD_CTL(args)
@@ -79,9 +72,6 @@
 #define DHD_EVENT(args)
 #define DHD_BTA(args)
 #define DHD_ISCAN(args)
-#ifdef ARP_OFFLOAD_SUPPORT
-#define DHD_ARPOE(args)
-#endif
 
 #define DHD_ERROR_ON()		0
 #define DHD_TRACE_ON()		0
@@ -96,9 +86,6 @@
 #define DHD_EVENT_ON()		0
 #define DHD_BTA_ON()		0
 #define DHD_ISCAN_ON()		0
-#ifdef ARP_OFFLOAD_SUPPORT
-#define DHD_ARPOE_ON()		0
-#endif
 #endif 
 
 #define DHD_LOG(args)

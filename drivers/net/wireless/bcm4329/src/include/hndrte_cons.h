@@ -1,9 +1,9 @@
 /*
  * Console support for hndrte.
  *
- * Copyright (C) 1999-2011, Broadcom Corporation
+ * Copyright (C) 1999-2010, Broadcom Corporation
  * 
- *         Unless you and Broadcom execute a separate written software license
+ *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
@@ -21,24 +21,12 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: hndrte_cons.h,v 13.4.10.2.16.1 2011/02/05 00:15:17 Exp $
+ * $Id: hndrte_cons.h,v 13.1.2.4 2010/07/15 19:06:11 Exp $
  */
-
-#ifndef	_HNDRTE_CONS_H
-#define	_HNDRTE_CONS_H
 
 #include <typedefs.h>
 
-#if defined(RWL_DONGLE) || defined(UART_REFLECTOR)
-/* For Dongle uart tranport max cmd len is 256 bytes + header length (16 bytes)
- *  In case of ASD commands we are not sure about how much is the command size
- *  To be on the safe side, input buf len CBUF_LEN is increased to max (512) bytes.
- */
-#define RWL_MAX_DATA_LEN	(512 + 8)	/* allow some extra bytes for '/n' termination */
-#define CBUF_LEN	(RWL_MAX_DATA_LEN + 64)  /* allow 64 bytes for header ("rwl...") */
-#else
 #define CBUF_LEN	(128)
-#endif /* RWL_DONGLE || UART_REFLECTOR */
 
 #define LOG_BUF_LEN	1024
 
@@ -46,7 +34,7 @@ typedef struct {
 	uint32		buf;		/* Can't be pointer on (64-bit) hosts */
 	uint		buf_size;
 	uint		idx;
-	char		*_buf_compat;	/* redundant pointer for backward compat. */
+	char		*_buf_compat;	/* Redundant pointer for backward compat. */
 } hndrte_log_t;
 
 typedef struct {
@@ -73,5 +61,3 @@ typedef struct {
 	uint		cbuf_idx;
 	char		cbuf[CBUF_LEN];
 } hndrte_cons_t;
-
-#endif /* _HNDRTE_CONS_H */

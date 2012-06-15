@@ -1,10 +1,9 @@
 /*
- * Broadcom SiliconBackplane SDIO/PCMCIA hardware-specific
- * device core support
+ * Broadcom SiliconBackplane SDIO/PCMCIA hardware-specific device core support
  *
- * Copyright (C) 1999-2011, Broadcom Corporation
+ * Copyright (C) 1999-2010, Broadcom Corporation
  * 
- *         Unless you and Broadcom execute a separate written software license
+ *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
@@ -22,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: sbsdpcmdev.h,v 13.38 2009/09/22 22:56:45 Exp $
+ * $Id: sbsdpcmdev.h,v 13.29.4.1.4.6.6.2 2008/12/31 21:16:51 Exp $
  */
 
 #ifndef	_sbsdpcmdev_h_
@@ -87,8 +86,7 @@ typedef volatile struct {
 	uint32 intmask;			/* IntSbMask, 0x028, rev8   */
 	uint32 sbintstatus;		/* SBIntStatus, 0x02c, rev8   */
 	uint32 sbintmask;		/* SBIntMask, 0x030, rev8   */
-	uint32 funcintmask;		/* SDIO Function Interrupt Mask, SDIO rev4 */
-	uint32 PAD[2];
+	uint32 PAD[3];
 	uint32 tosbmailbox;		/* ToSBMailbox, 0x040, rev8   */
 	uint32 tohostmailbox;		/* ToHostMailbox, 0x044, rev8   */
 	uint32 tosbmailboxdata;		/* ToSbMailboxData, 0x048, rev8   */
@@ -99,10 +97,10 @@ typedef volatile struct {
 	uint32 PAD[3];
 
 	/* PCMCIA frame control */
-	uint8 pcmciaframectrl;		/* pcmciaFrameCtrl, 0x060, rev8   */
-	uint8 PAD[3];
-	uint8 pcmciawatermark;		/* pcmciaWaterMark, 0x064, rev8   */
-	uint8 PAD[155];
+	uint8  pcmciaframectrl;		/* pcmciaFrameCtrl, 0x060, rev8   */
+	uint8  PAD[3];
+	uint8  pcmciawatermark;		/* pcmciaWaterMark, 0x064, rev8   */
+	uint8  PAD[155];
 
 	/* interrupt batching control */
 	uint32 intrcvlazy;		/* IntRcvLazy, 0x100, rev8 */
@@ -160,12 +158,10 @@ typedef volatile struct {
 } sdpcmd_regs_t;
 
 /* corecontrol */
-#define CC_CISRDY		(1 << 0)	/* CIS Ready */
-#define CC_BPRESEN		(1 << 1)	/* CCCR RES signal causes backplane reset */
-#define CC_F2RDY		(1 << 2)	/* set CCCR IOR2 bit */
-#define CC_CLRPADSISO		(1 << 3)	/* clear SDIO pads isolation bit (rev 11) */
-#define CC_XMTDATAAVAIL_MODE	(1 << 4)	/* data avail generates an interrupt */
-#define CC_XMTDATAAVAIL_CTRL	(1 << 5)	/* data avail interrupt ctrl */
+#define CC_CISRDY	(1 << 0)	/* CIS Ready */
+#define CC_BPRESEN	(1 << 1)	/* CCCR RES signal causes backplane reset */
+#define CC_F2RDY	(1 << 2)	/* set CCCR IOR2 bit */
+#define CC_CLRPADSISO	(1 << 3)	/* clear SDIO pads isolation bit (rev 11) */
 
 /* corestatus */
 #define CS_PCMCIAMODE	(1 << 0)	/* Device Mode; 0=SDIO, 1=PCMCIA */
@@ -200,7 +196,6 @@ typedef volatile struct {
 #define	I_XU		(1 << 15)	/* Transmit fifo Underflow */
 #define	I_RI		(1 << 16)	/* Receive Interrupt */
 #define I_BUSPWR	(1 << 17)	/* SDIO Bus Power Change (rev 9) */
-#define I_XMTDATA_AVAIL (1 << 23)	/* bits in fifo */
 #define	I_XI		(1 << 24)	/* Transmit Interrupt */
 #define I_RF_TERM	(1 << 25)	/* Read Frame Terminate */
 #define I_WF_TERM	(1 << 26)	/* Write Frame Terminate */

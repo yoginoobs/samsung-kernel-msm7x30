@@ -5,9 +5,9 @@
  *
  * Definitions subject to change without notice.
  *
- * Copyright (C) 1999-2011, Broadcom Corporation
+ * Copyright (C) 1999-2010, Broadcom Corporation
  * 
- *         Unless you and Broadcom execute a separate written software license
+ *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
@@ -25,7 +25,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhdioctl.h,v 13.11.10.1 2010/12/22 23:47:26 Exp $
+ * $Id: dhdioctl.h,v 13.7.8.1.4.1.16.5 2010/05/21 21:49:38 Exp $
  */
 
 #ifndef _dhdioctl_h_
@@ -50,19 +50,13 @@ typedef struct dhd_ioctl {
 	uint driver;	/* to identify target driver */
 } dhd_ioctl_t;
 
-/* Underlying BUS definition */
-enum {
-	BUS_TYPE_USB = 0, /* for USB dongles */
-	BUS_TYPE_SDIO /* for SDIO dongles */
-};
-
 /* per-driver magic numbers */
 #define DHD_IOCTL_MAGIC		0x00444944
 
 /* bump this number if you change the ioctl interface */
 #define DHD_IOCTL_VERSION	1
 
-#define	DHD_IOCTL_MAXLEN	8192	/* max length ioctl buffer required */
+#define	DHD_IOCTL_MAXLEN	8192		/* max length ioctl buffer required */
 #define	DHD_IOCTL_SMLEN		256		/* "small" length ioctl buffer required */
 
 /* common ioctl definitions */
@@ -85,10 +79,7 @@ enum {
 #define DHD_GLOM_VAL	0x0400
 #define DHD_EVENT_VAL	0x0800
 #define DHD_BTA_VAL		0x1000
-#define DHD_ISCAN_VAL	0x2000
-#ifdef ARP_OFFLOAD_SUPPORT
-#define DHD_ARPOE_VAL	0x4000
-#endif
+#define DHD_ISCAN_VAL 	0x2000
 
 #ifdef SDTEST
 /* For pktgen iovar */
@@ -127,5 +118,6 @@ typedef struct dhd_pktgen {
 
 /* require default structure packing */
 #include <packed_section_end.h>
+
 
 #endif /* _dhdioctl_h_ */

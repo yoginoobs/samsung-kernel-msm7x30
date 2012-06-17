@@ -649,7 +649,7 @@ static void msm_batt_delay_init(struct work_struct *work)
 {	
 	int rc;
 
-	printk("[SSAM] %s enter!\n", __func__);
+//	printk("[SSAM] %s enter!\n", __func__);
 
 	rc = msm_batt_init_rpc();
 

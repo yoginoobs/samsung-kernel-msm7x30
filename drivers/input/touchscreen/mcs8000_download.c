@@ -36,9 +36,8 @@
 #include "ANCORA_TMO_FW_R04_V06.c"
 #include "ANCORA_TMO_FW_R06_V13.c"
 #else
-#include "ANCORA_FW_R01_V30.c"  // Window 0.55T
-#include "ANCORA_FW_R02_V15.c"  // Window 0.70T (TSP rev.02)
-#include "ANCORA_FW_R03_V14.c"  // Window 0.70T
+#include "ANCORA_FW_R03_V14.c" 
+#include "ANCORA_FW_R50_V15.c"
 #endif
  
 UINT8  ucVerifyBuffer[MELFAS_TRANSFER_LENGTH];		//	You may melloc *ucVerifyBuffer instead of this
@@ -142,6 +141,26 @@ int mcsdl_ISC_download_binary_data(void)
 	return ( nRet == MCSDL_RET_SUCCESS );    
 }
 
+#if defined(CONFIG_MACH_ANCORA)
+int mcsdl_ISC_download_binary_data_G2(void)
+{
+	int nRet;
+	#if MELFAS_USE_PROTOCOL_COMMAND_FOR_DOWNLOAD
+	melfas_send_download_enable_command();
+	mcsdl_delay(MCSDL_DELAY_100US);
+	#endif
+    
+	MELFAS_DISABLE_BASEBAND_ISR();					// Disable Baseband touch interrupt ISR.
+	MELFAS_DISABLE_WATCHDOG_TIMER_RESET();			// Disable Baseband watchdog timer
+
+	nRet = mcsdl_ISC_download( (const UINT8*) MELFAS_binary_G2, (const UINT16)MELFAS_binary_nLength_G2 , 0);
+
+	MELFAS_ROLLBACK_BASEBAND_ISR(); 				// Roll-back Baseband touch interrupt ISR.
+	MELFAS_ROLLBACK_WATCHDOG_TIMER_RESET(); 		// Roll-back Baseband watchdog timer
+	
+	return ( nRet == MCSDL_RET_SUCCESS );    
+}
+#endif 
 
 int mcsdl_download_binary_data(void)
 {
@@ -166,6 +185,8 @@ int mcsdl_download_binary_data(void)
 
 	return ( nRet == MCSDL_RET_SUCCESS );
 }
+
+#if defined(CONFIG_MACH_ANCORA_TMO)
 int mcsdl_download_binary_data_55T(void)
 {
 	int nRet;
@@ -187,9 +208,10 @@ int mcsdl_download_binary_data_55T(void)
 
 	return ( nRet == MCSDL_RET_SUCCESS );
 }
+#endif
 
 #if defined(CONFIG_MACH_ANCORA)   
-int mcsdl_download_binary_data_HW02(void)
+int mcsdl_download_binary_data_G2(void)
 {
 	int nRet;
 	#if MELFAS_USE_PROTOCOL_COMMAND_FOR_DOWNLOAD
@@ -203,7 +225,7 @@ int mcsdl_download_binary_data_HW02(void)
 	//------------------------
 	// Run Download
 	//------------------------
-	nRet = mcsdl_download( (const UINT8*) MELFAS_binary_HW02, (const UINT16)MELFAS_binary_nLength_HW02 , 0);
+	nRet = mcsdl_download( (const UINT8*) MELFAS_binary_G2, (const UINT16)MELFAS_binary_nLength_G2 , 0);
 	
 	MELFAS_ROLLBACK_BASEBAND_ISR();					// Roll-back Baseband touch interrupt ISR.
 	MELFAS_ROLLBACK_WATCHDOG_TIMER_RESET();			// Roll-back Baseband watchdog timer

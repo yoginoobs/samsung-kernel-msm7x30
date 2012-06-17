@@ -3319,7 +3319,7 @@ static int __init fg17043_gpio_init(void)
 {
 	int pin, rc;
 
-	printk("[hyeokseon]fg17043_gpio_init \n");
+	//printk("[hyeokseon]fg17043_gpio_init \n");
 
 		for (pin = 0; pin < ARRAY_SIZE(fg17043_gpio_on); pin++) {
 			rc = gpio_tlmm_config(fg17043_gpio_on[pin],
@@ -3345,7 +3345,7 @@ static int __init fg_smb_gpio_init(void)
 {
 	int pin, rc;
 
-	printk("[hyeokseon]fg_smb_gpio_init \n");
+	//printk("[hyeokseon]fg_smb_gpio_init \n");
 
 		for (pin = 0; pin < ARRAY_SIZE(fg_smb_gpio_on); pin++) {
 			rc = gpio_tlmm_config(fg_smb_gpio_on[pin],
@@ -5757,7 +5757,7 @@ static int lcdc_common_panel_power(int on)
 		}
 	}
 #endif	
-	printk("######### SEXYKYU lcdc_common_panel_power - ######## \n");
+	//printk("######### SEXYKYU lcdc_common_panel_power - ######## \n");
 	return rc;
 }
 

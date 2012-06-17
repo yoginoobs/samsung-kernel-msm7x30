@@ -208,7 +208,7 @@ int batt_temp_adc_info = -1;
 #define BATT_TEMP_LOW_BLOCK			1708	// 	-3`C   +- 2
 #define BATT_TEMP_LOW_RECOVER		1670	//	0`C    +- 2
  
-#define BATT_FULL_CHARGING_VOLTAGE	4190
+#define BATT_FULL_CHARGING_VOLTAGE	4185
 #define BATT_FULL_CHARGING_CURRENT	180
 #define BATT_FULL_CHARGING_CURRENT_REV_5	360
 
@@ -524,7 +524,7 @@ static void msm_batt_delay_init(struct work_struct *work)
 {	
 	int rc;
 
-	printk("[SSAM] %s enter!\n", __func__);
+//	printk("[SSAM] %s enter!\n", __func__);
 
 	rc = msm_batt_init_rpc();
 

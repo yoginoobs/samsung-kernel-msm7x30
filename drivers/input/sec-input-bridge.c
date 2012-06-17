@@ -128,13 +128,13 @@ static void input_bridge_work(struct work_struct *work) {
 #endif
 
     if (!dump_enable_flag) {
-        printk(KERN_INFO "[jjals] debug level low skip ramdump mode!!!\n");
+//        printk(KERN_INFO "[jjals] debug level low skip ramdump mode!!!\n");
         return;
     }
 
     mutex_lock(&bridge->lock);
 
-    printk("\n[jjals] ramdump gogosing!!!!!\n");
+//    printk("\n[jjals] ramdump gogosing!!!!!\n");
 
 #ifdef USE_LED_BLANK_FOR_ANCORA
     for (i = 0; i < led_loop_count; i++) {

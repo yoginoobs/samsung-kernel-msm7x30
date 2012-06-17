@@ -1326,8 +1326,10 @@ int sr030pc30_sensor_ext_config(void __user *argp)
           else
           {
             if(esd_enabled)
+            {
               printk("[SR030PC300] esd_enabled\n");
-              return;
+              return rc;
+            }
               
             esd_enabled=1;
             mPreviewRegistersSet = 0;

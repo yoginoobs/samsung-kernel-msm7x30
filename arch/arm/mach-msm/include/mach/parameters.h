@@ -8,4 +8,3 @@ struct ariesve_parameter {
 extern void msm_read_param(struct ariesve_parameter *param_data);
 extern void msm_write_param(struct ariesve_parameter *param_data);
 #endif
-\ No Newline at end of file
